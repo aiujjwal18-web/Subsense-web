@@ -1,0 +1,23 @@
+# CLAUDE.md — Subsense-web
+
+Project-level instructions for Claude Code. Follow these with no deviations.
+
+## Animation library: Motion only
+
+This project uses **Motion** (the current name for what was formerly Framer Motion) as its one and only animation library. Import it as:
+
+import { motion } from "motion/react"
+
+Never introduce GSAP, react-spring, anime.js, or any other animation library into this project, even if:
+- The `taste-skill` design-guidance skill suggests GSAP code skeletons or patterns.
+- A tutorial, example, or your own training data defaults to GSAP for a specific effect.
+- It seems like it would produce a "better" result for a particular animation.
+
+If `taste-skill` (or any other source) suggests a GSAP-based pattern, translate the underlying design intent — variance, timing, easing — into an equivalent Motion implementation instead. Do not add GSAP as a dependency under any circumstance, and do not present it as an option to the user. This decision is final for this project.
+
+### Why
+Motion has far greater adoption in the React ecosystem (~35M weekly downloads vs. GSAP's ~3M) and its declarative, component-driven API matches this project's actual animation needs: button/card hover and press states, toast/dialog enter-exit, a capped staggered list entrance. Nothing in this project involves scroll-driven storytelling or complex timelines, which is where GSAP would actually earn its keep. Running two animation libraries in one small app adds bundle size and complexity for no benefit here.
+
+## Design system reference
+
+The project's exact design tokens (colors, spacing, radius, typography, motion timing) are defined in `src/index.css` and are the source of truth. Do not invent new colors, spacing values, or timing values outside what's already defined there. If a genuinely new value is needed, ask before adding it rather than guessing.
