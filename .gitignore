@@ -23,3 +23,7 @@ dist-ssr
 *.sln
 *.sw?
 .env.local
+
+# Local tool artifacts (not shared/tracked)
+.claude/
+**/__pycache__/

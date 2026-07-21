@@ -21,3 +21,7 @@ Motion has far greater adoption in the React ecosystem (~35M weekly downloads vs
 ## Design system reference
 
 The project's exact design tokens (colors, spacing, radius, typography, motion timing) are defined in `src/index.css` and are the source of truth. Do not invent new colors, spacing values, or timing values outside what's already defined there. If a genuinely new value is needed, ask before adding it rather than guessing.
+
+## Traceability: update BUILD_LOG.md every task
+
+Before committing the result of any non-trivial prompt (a new feature, a bug fix, a refactor — not a one-line typo fix), append an entry to `BUILD_LOG.md` at the repo root using the template already at the top of that file: the prompt you were given (or a faithful summary if very long), a bullet list of what you actually built/changed, and how you verified it (build/lint/test results, manual checks). Put the new entry directly under "## Entry template", above the most recent existing entry (most-recent-first order). This is a standing project requirement, not optional — the point is that every future session can reconstruct what happened and why without re-reading the whole chat history. A git `post-commit` hook separately appends a one-line commit record automatically; your fuller entry is the part that captures intent and reasoning, which the hook can't.
