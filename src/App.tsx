@@ -1,6 +1,5 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom"
 
-import { SubscriptionsDemo } from "@/components/subscriptions/SubscriptionsDemo"
 import { AppLayout } from "@/components/shell/AppLayout"
 import { AuthProvider } from "@/features/auth/AuthContext"
 import { AuthPage } from "@/features/auth/AuthPage"
@@ -9,6 +8,9 @@ import { DecisionWorkspacePage } from "@/features/decision-workspace/DecisionWor
 import { InsightsPage } from "@/features/insights/InsightsPage"
 import { ProfilePage } from "@/features/profile/ProfilePage"
 import { SharedSubscriptionsPage } from "@/features/shared-subscriptions/SharedSubscriptionsPage"
+import { AddSubscriptionPage } from "@/features/subscriptions/AddSubscriptionPage"
+import { SubscriptionDetailsPage } from "@/features/subscriptions/SubscriptionDetailsPage"
+import { SubscriptionsListPage } from "@/features/subscriptions/SubscriptionsListPage"
 
 function App() {
   return (
@@ -24,7 +26,9 @@ function App() {
             }
           >
             <Route path="/" element={<DecisionWorkspacePage />} />
-            <Route path="/subscriptions" element={<SubscriptionsDemo />} />
+            <Route path="/subscriptions" element={<SubscriptionsListPage />} />
+            <Route path="/subscriptions/add" element={<AddSubscriptionPage />} />
+            <Route path="/subscriptions/:id" element={<SubscriptionDetailsPage />} />
             <Route path="/shared" element={<SharedSubscriptionsPage />} />
             <Route path="/insights" element={<InsightsPage />} />
             <Route path="/profile" element={<ProfilePage />} />

@@ -3,39 +3,29 @@ import { CreditCard } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
+import {
+  BILLING_FREQUENCY_LABEL,
+  LIFECYCLE_LABEL,
+  type BillingFrequency,
+  type Currency,
+  type LifecycleStatus,
+  type RenewalUrgency,
+} from "@/features/subscriptions/subscription-utils"
 
-export type LifecycleStatus =
-  | "created"
-  | "active"
-  | "renewal_confirmed"
-  | "paused"
-  | "cancelled"
-  | "archived"
-
-export type RenewalUrgency = "normal" | "upcoming" | "critical"
-
-export type BillingFrequency = "weekly" | "monthly" | "quarterly" | "yearly"
+export type { BillingFrequency, LifecycleStatus, RenewalUrgency }
 
 export interface SubscriptionCardProps {
   name: string
   logoUrl?: string
   cost: number
-  currency: string
+  currency: Currency
   billingFrequency: BillingFrequency
+  customIntervalDays?: number
   nextRenewalDate: string | Date
   lifecycleStatus: LifecycleStatus
   renewalUrgency: RenewalUrgency
   onClick?: () => void
   className?: string
-}
-
-const LIFECYCLE_LABEL: Record<LifecycleStatus, string> = {
-  created: "Created",
-  active: "Active",
-  renewal_confirmed: "Renewal Confirmed",
-  paused: "Paused",
-  cancelled: "Cancelled",
-  archived: "Archived",
 }
 
 const URGENCY_LABEL: Record<RenewalUrgency, string> = {
@@ -44,17 +34,9 @@ const URGENCY_LABEL: Record<RenewalUrgency, string> = {
   critical: "Critical",
 }
 
-const FREQUENCY_LABEL: Record<BillingFrequency, string> = {
-  weekly: "Weekly",
-  monthly: "Monthly",
-  quarterly: "Quarterly",
-  yearly: "Yearly",
-}
-
-const FREQUENCY_SUFFIX: Record<BillingFrequency, string> = {
-  weekly: "/wk",
+const FREQUENCY_SUFFIX: Record<Exclude<BillingFrequency, "custom">, string> = {
   monthly: "/mo",
-  quarterly: "/qtr",
+  every_28_days: "/28d",
   yearly: "/yr",
 }
 
@@ -70,11 +52,10 @@ const STATE_COLOR_CLASSES: Record<StateColor, string> = {
 }
 
 const LIFECYCLE_COLOR: Record<LifecycleStatus, StateColor> = {
-  created: "gray",
   active: "green",
+  review_due: "amber",
   renewal_confirmed: "green",
   paused: "gray",
-  cancelled: "gray",
   archived: "gray",
 }
 
@@ -90,6 +71,7 @@ export function SubscriptionCard({
   cost,
   currency,
   billingFrequency,
+  customIntervalDays,
   nextRenewalDate,
   lifecycleStatus,
   renewalUrgency,
@@ -107,6 +89,13 @@ export function SubscriptionCard({
       return `${currency} ${cost.toFixed(2)}`
     }
   }, [cost, currency])
+
+  const frequencySuffix =
+    billingFrequency === "custom"
+      ? customIntervalDays
+        ? `/${customIntervalDays}d`
+        : "/custom"
+      : FREQUENCY_SUFFIX[billingFrequency]
 
   const formattedRenewalDate = useMemo(
     () =>
@@ -162,7 +151,7 @@ export function SubscriptionCard({
               {name}
             </p>
             <p className="text-xs text-muted-foreground">
-              {FREQUENCY_LABEL[billingFrequency]}
+              {BILLING_FREQUENCY_LABEL[billingFrequency]}
             </p>
           </div>
         </div>
@@ -182,7 +171,7 @@ export function SubscriptionCard({
           <p className="font-heading text-xl font-semibold text-foreground">
             {formattedCost}
             <span className="ml-0.5 text-sm font-normal text-muted-foreground">
-              {FREQUENCY_SUFFIX[billingFrequency]}
+              {frequencySuffix}
             </span>
           </p>
           <p className="text-xs text-muted-foreground">
