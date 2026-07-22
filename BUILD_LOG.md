@@ -71,3 +71,5 @@ Implement Phase 2 (Authentication and Profile) for SubSense per 16_Implementatio
 **Commit:** (see next entry — logged automatically by the post-commit hook)
 
 **Commit logged:** `b01fae6` — "Phase 2: Google Sign-In, first-login provisioning, protected routes (BR-002/006/007/008)" (2026-07-21 23:55) — 10 files changed, 7056 insertions(+), 6721 deletions(-)
+
+**Commit logged:** `82d00b8` — "Phase 3: App Shell and Navigation" (2026-07-22 19:16) — 9 files changed, 342 insertions(+), 48 deletions(-)
