@@ -194,3 +194,5 @@ Implement Phase 2 (Authentication and Profile) for SubSense per 16_Implementatio
 **Commit logged:** `b49d278` — "Fold in CLAUDE.md session-start instruction and BUILD_LOG.md commit trailer" (2026-07-22 19:19) — 2 files changed, 6 insertions(+)
 
 **Commit logged:** `be6fa25` — "Phase 4: Subscription Management" (2026-07-22 20:53) — 9 files changed, 1343 insertions(+), 179 deletions(-)
+
+**Commit logged:** `df59503` — "Phase 5: Decision Workspace, plus post-Phase-5 fixes and DEC-044 exit-motion timing" (2026-07-23 21:17) — 12 files changed, 443 insertions(+), 56 deletions(-)
