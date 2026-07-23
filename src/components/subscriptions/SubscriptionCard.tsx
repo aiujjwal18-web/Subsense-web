@@ -2,6 +2,7 @@ import { useMemo, useState } from "react"
 import { CreditCard } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
+import { RenewalUrgencyBadge } from "@/components/subscriptions/RenewalUrgencyBadge"
 import { cn } from "@/lib/utils"
 import {
   BILLING_FREQUENCY_LABEL,
@@ -28,12 +29,6 @@ export interface SubscriptionCardProps {
   className?: string
 }
 
-const URGENCY_LABEL: Record<RenewalUrgency, string> = {
-  normal: "Normal",
-  upcoming: "Upcoming",
-  critical: "Critical",
-}
-
 const FREQUENCY_SUFFIX: Record<Exclude<BillingFrequency, "custom">, string> = {
   monthly: "/mo",
   every_28_days: "/28d",
@@ -57,12 +52,6 @@ const LIFECYCLE_COLOR: Record<LifecycleStatus, StateColor> = {
   renewal_confirmed: "green",
   paused: "gray",
   archived: "gray",
-}
-
-const URGENCY_COLOR: Record<RenewalUrgency, StateColor> = {
-  normal: "gray",
-  upcoming: "amber",
-  critical: "red",
 }
 
 export function SubscriptionCard({
@@ -139,7 +128,7 @@ export function SubscriptionCard({
               src={logoUrl}
               alt=""
               onError={() => setLogoFailed(true)}
-              className="size-10 shrink-0 rounded-full object-cover ring-1 ring-border"
+              className="size-10 shrink-0 rounded-full bg-muted object-contain ring-1 ring-border"
             />
           ) : (
             <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted ring-1 ring-border">
@@ -178,15 +167,7 @@ export function SubscriptionCard({
             Renews {formattedRenewalDate}
           </p>
         </div>
-        <Badge
-          variant="outline"
-          className={cn(
-            "shrink-0 transition-none",
-            STATE_COLOR_CLASSES[URGENCY_COLOR[renewalUrgency]]
-          )}
-        >
-          {URGENCY_LABEL[renewalUrgency]}
-        </Badge>
+        <RenewalUrgencyBadge urgency={renewalUrgency} />
       </div>
     </div>
   )

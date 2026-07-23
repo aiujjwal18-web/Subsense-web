@@ -222,7 +222,7 @@ function SubscriptionDetailsContent({ id }: { id: string }) {
         <div className="mt-4 flex items-start justify-between gap-4">
           <div className="flex items-center gap-3">
             {logoUrl ? (
-              <img src={logoUrl} alt="" className="size-12 shrink-0 rounded-full object-cover ring-1 ring-border" />
+              <img src={logoUrl} alt="" className="size-12 shrink-0 rounded-full bg-muted object-contain ring-1 ring-border" />
             ) : (
               <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-muted ring-1 ring-border">
                 <CreditCard className="size-6 text-muted-foreground" />

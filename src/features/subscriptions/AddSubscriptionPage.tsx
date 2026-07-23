@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { motion } from "motion/react"
 import { CreditCard, Search, X } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 
@@ -14,6 +15,7 @@ import {
 } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useAuth } from "@/features/auth/AuthContext"
+import { staggerItemMotion } from "@/lib/motion"
 import { supabase } from "@/lib/supabase"
 import {
   BILLING_FREQUENCY_LABEL,
@@ -182,7 +184,7 @@ export function AddSubscriptionPage() {
                     <img
                       src={selectedCatalog.logo_url}
                       alt=""
-                      className="size-9 shrink-0 rounded-full object-cover ring-1 ring-border"
+                      className="size-9 shrink-0 rounded-full bg-muted object-contain ring-1 ring-border"
                     />
                   ) : (
                     <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted ring-1 ring-border">
@@ -223,18 +225,18 @@ export function AddSubscriptionPage() {
                   )}
                   {!searching && query.trim() && results.length > 0 && (
                     <ul className="mt-2 divide-y divide-border rounded-lg border border-border">
-                      {results.map((result) => (
-                        <li key={result.id}>
+                      {results.map((result, index) => (
+                        <motion.li key={result.id} {...staggerItemMotion(index)}>
                           <button
                             type="button"
                             onClick={() => setSelectedCatalog(result)}
-                            className="flex w-full items-center gap-3 p-2.5 text-left transition-colors hover:bg-muted"
+                            className="flex w-full items-center gap-3 p-2.5 text-left transition-colors duration-[120ms] ease-out hover:bg-muted"
                           >
                             {result.logo_url ? (
                               <img
                                 src={result.logo_url}
                                 alt=""
-                                className="size-8 shrink-0 rounded-full object-cover ring-1 ring-border"
+                                className="size-8 shrink-0 rounded-full bg-muted object-contain ring-1 ring-border"
                               />
                             ) : (
                               <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted ring-1 ring-border">
@@ -245,7 +247,7 @@ export function AddSubscriptionPage() {
                               {result.name}
                             </span>
                           </button>
-                        </li>
+                        </motion.li>
                       ))}
                     </ul>
                   )}

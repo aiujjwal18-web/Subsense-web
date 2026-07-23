@@ -1,4 +1,5 @@
 import { Bell, LogOut, Menu, Plus, Search } from "lucide-react"
+import { useNavigate } from "react-router-dom"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -25,6 +26,7 @@ function getInitials(name: string) {
 }
 
 export function Header({ onOpenMobileSidebar }: HeaderProps) {
+  const navigate = useNavigate()
   const { session, profile, signOut } = useAuth()
 
   const displayName =
@@ -60,7 +62,13 @@ export function Header({ onOpenMobileSidebar }: HeaderProps) {
         >
           <Search />
         </Button>
-        <Button type="button" variant="outline" size="sm" disabled className="gap-1.5">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => navigate("/subscriptions/add")}
+          className="gap-1.5"
+        >
           <Plus />
           <span className="hidden sm:inline">Add Subscription</span>
         </Button>

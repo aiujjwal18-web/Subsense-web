@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom"
 
 import { SubscriptionCard } from "@/components/subscriptions/SubscriptionCard"
 import { Button } from "@/components/ui/button"
+import { staggerItemMotion } from "@/lib/motion"
 import { supabase } from "@/lib/supabase"
 import {
   SUBSCRIPTION_SELECT_COLUMNS,
@@ -13,10 +14,6 @@ import {
   getLogoUrl,
   type SubscriptionRow,
 } from "@/features/subscriptions/subscription-utils"
-
-// Entrance stagger is capped so a longer list doesn't keep growing the delay indefinitely.
-const MAX_STAGGERED_ITEMS = 8
-const STAGGER_STEP_SECONDS = 0.06
 
 type LoadState = "loading" | "error" | "ready"
 
@@ -99,16 +96,7 @@ export function SubscriptionsListPage() {
         {state === "ready" && rows.length > 0 && (
           <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {rows.map((row, index) => (
-              <motion.div
-                key={row.id}
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{
-                  duration: 0.4,
-                  ease: "easeOut",
-                  delay: Math.min(index, MAX_STAGGERED_ITEMS - 1) * STAGGER_STEP_SECONDS,
-                }}
-              >
+              <motion.div key={row.id} {...staggerItemMotion(index)}>
                 <SubscriptionCard
                   name={getDisplayName(row)}
                   logoUrl={getLogoUrl(row)}
