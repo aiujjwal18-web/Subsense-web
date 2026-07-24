@@ -28,6 +28,26 @@ Two things keep this current automatically:
 
 ---
 
+## 2026-07-23 — SubSense logo (DEC-055)
+
+**Prompt:**
+Build the SubSense logo per DEC-055 (doc 08) / doc 05's Logo section, using existing tokens only (`--primary`, `--popover`, `font-heading`/IBM Plex Sans), no new dependencies. Create `src/components/brand/LogoIcon.tsx` (a 40x40 rounded-square icon: `--popover` background, an S-curve stroked in `--primary`) and `src/components/brand/Logo.tsx` (the full lockup: icon + "SubSense" wordmark in `font-heading`). In `Header.tsx`, replace the plain text wordmark with icon-only (`LogoIcon`, `size-8`) — doc 05 reserves the full lockup for marketing/landing and the pre-auth screen. In `AuthPage.tsx`, replace the plain `<h1>SubSense</h1>` with the full `Logo` lockup, centered. Verify header shows icon-only, login page shows icon+wordmark centered, no console errors. Update BUILD_LOG.md, run build/lint, don't commit.
+
+**What was done:**
+- `src/components/brand/LogoIcon.tsx` and `src/components/brand/Logo.tsx`: built exactly to the given spec (`cn` import confirmed as `@/lib/utils`, matching every other component in the codebase, no adjustment needed there).
+- `Header.tsx`: swapped the plain `<span className="font-heading ...">SubSense</span>` wordmark for `<LogoIcon className="size-8 shrink-0" />` — icon-only, per doc 05.
+- `AuthPage.tsx`: swapped the plain `<h1>SubSense</h1>` for `<Logo className="justify-center" />`, keeping the page's existing centered-card layout.
+- Both new components use only pre-existing tokens (`var(--primary)`, `var(--popover)`, `font-heading`) and no new npm dependencies, as instructed.
+
+**Verification:**
+- `npm run build`: passes (exit 0, same pre-existing bundle-size advisory).
+- `npm run lint`: same 4 pre-existing errors, no new ones.
+- Manual smoke test (headless Chromium): `/auth` (no session) renders the full icon+wordmark lockup centered above the "Sign in to track your subscriptions" copy, alongside the existing Google sign-in button — screenshot confirmed the icon (blue S-curve on a dark rounded-square) and wordmark both render correctly, no layout breakage. The authenticated shell's `Header` (via the fake-session technique, since no real OAuth session is available here) shows only the icon in the top-left, confirmed via a text-content check that "SubSense" no longer appears as text in the header. Zero non-401 console errors in either view.
+
+**Commit:** (see next entry — logged automatically by the post-commit hook)
+
+---
+
 ## 2026-07-23 — DEC-044 exit-motion audit: Dialog/DropdownMenu/Select
 
 **Prompt:**
@@ -196,3 +216,5 @@ Implement Phase 2 (Authentication and Profile) for SubSense per 16_Implementatio
 **Commit logged:** `be6fa25` — "Phase 4: Subscription Management" (2026-07-22 20:53) — 9 files changed, 1343 insertions(+), 179 deletions(-)
 
 **Commit logged:** `df59503` — "Phase 5: Decision Workspace, plus post-Phase-5 fixes and DEC-044 exit-motion timing" (2026-07-23 21:17) — 12 files changed, 443 insertions(+), 56 deletions(-)
+
+**Commit logged:** `f769fb8` — "Log commit trailer for df59503 (Phase 5 + post-Phase-5 fixes + DEC-044 exit-motion)" (2026-07-23 21:21) — 1 file changed, 2 insertions(+)

@@ -1,6 +1,7 @@
 import { Bell, LogOut, Menu, Plus, Search } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 
+import { LogoIcon } from "@/components/brand/LogoIcon"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import {
@@ -48,9 +49,7 @@ export function Header({ onOpenMobileSidebar }: HeaderProps) {
         <Menu className="size-5" />
       </button>
 
-      <span className="font-heading text-lg font-semibold text-foreground">
-        SubSense
-      </span>
+      <LogoIcon className="size-8 shrink-0" />
 
       <div className="ml-auto flex items-center gap-1">
         <Button
