@@ -271,3 +271,5 @@ Implement Phase 2 (Authentication and Profile) for SubSense per 16_Implementatio
 **Commit logged:** `73f8d53` — "SubSense logo (DEC-055)" (2026-07-24 20:32) — 4 files changed, 67 insertions(+), 3 deletions(-)
 
 **Commit logged:** `f9ada35` — "Email/password authentication, plus error-message and back-link fixes" (2026-07-24 20:35) — 7 files changed, 486 insertions(+), 58 deletions(-)
+
+**Commit logged:** `3e6c8c3` — "Log commit trailer for f9ada35 (email/password auth + fixes)" (2026-07-24 20:35) — 1 file changed, 2 insertions(+)
