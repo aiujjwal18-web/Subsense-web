@@ -1,6 +1,12 @@
-import { Navigate } from "react-router-dom"
+import { useState, type FormEvent } from "react"
+import { Link, Navigate } from "react-router-dom"
 
+import { Logo } from "@/components/brand/Logo"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { getAuthErrorMessage } from "@/features/auth/auth-error"
 import { useAuth } from "@/features/auth/AuthContext"
 
 function GoogleIcon() {
@@ -27,30 +33,191 @@ function GoogleIcon() {
 }
 
 export function AuthPage() {
-  const { session, loading, signInWithGoogle } = useAuth()
+  const { session, loading, signInWithGoogle, signInWithPassword, signUpWithPassword } =
+    useAuth()
+
+  const [mode, setMode] = useState<"signin" | "signup">("signin")
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [formError, setFormError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+  const [checkEmail, setCheckEmail] = useState(false)
 
   if (!loading && session) {
     return <Navigate to="/" replace />
   }
 
+  async function handleSubmit(event: FormEvent) {
+    event.preventDefault()
+    setFormError(null)
+
+    if (mode === "signup" && password !== confirmPassword) {
+      setFormError("Passwords don't match.")
+      return
+    }
+
+    setSubmitting(true)
+    const { data, error } =
+      mode === "signin"
+        ? await signInWithPassword(email, password)
+        : await signUpWithPassword(email, password)
+    setSubmitting(false)
+
+    if (error) {
+      setFormError(getAuthErrorMessage(error))
+      return
+    }
+
+    if (mode === "signup" && !data.session) {
+      setCheckEmail(true)
+    }
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-6">
       <div className="w-full max-w-sm rounded-lg border border-border bg-card p-8 text-center">
-        <h1 className="font-heading text-2xl font-semibold text-foreground">
-          SubSense
-        </h1>
+        <Logo className="justify-center" />
         <p className="mt-2 text-sm text-muted-foreground">
           Sign in to track your subscriptions.
         </p>
-        <Button
-          type="button"
-          variant="outline"
-          className="mt-8 w-full"
-          onClick={() => signInWithGoogle()}
-        >
-          <GoogleIcon />
-          Continue with Google
-        </Button>
+
+        {checkEmail ? (
+          <div className="mt-8">
+            <p className="text-sm text-muted-foreground">
+              Check your email to confirm your account.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setCheckEmail(false)
+                setMode("signin")
+                setPassword("")
+                setConfirmPassword("")
+                setFormError(null)
+              }}
+              className="mt-4 text-sm text-primary hover:underline"
+            >
+              ← Back to sign in
+            </button>
+          </div>
+        ) : (
+          <>
+            <Tabs
+              value={mode}
+              onValueChange={(value) => {
+                setMode(value as "signin" | "signup")
+                setFormError(null)
+              }}
+              className="mt-8"
+            >
+              <TabsList className="w-full">
+                <TabsTrigger value="signin">Sign in</TabsTrigger>
+                <TabsTrigger value="signup">Create account</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="signin" className="mt-4">
+                <form onSubmit={handleSubmit} className="flex flex-col gap-4 text-left">
+                  <div>
+                    <Label htmlFor="signin-email">Email</Label>
+                    <Input
+                      id="signin-email"
+                      type="email"
+                      autoComplete="email"
+                      required
+                      value={email}
+                      onChange={(event) => setEmail(event.target.value)}
+                      className="mt-1.5"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="signin-password">Password</Label>
+                    <Input
+                      id="signin-password"
+                      type="password"
+                      autoComplete="current-password"
+                      required
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      className="mt-1.5"
+                    />
+                    <Link
+                      to="/auth/forgot-password"
+                      className="mt-1.5 inline-block text-xs text-primary hover:underline"
+                    >
+                      Forgot password?
+                    </Link>
+                  </div>
+                  {formError && <p className="text-sm text-destructive">{formError}</p>}
+                  <Button type="submit" disabled={submitting} className="w-full">
+                    {submitting ? "Signing in…" : "Sign in"}
+                  </Button>
+                </form>
+              </TabsContent>
+
+              <TabsContent value="signup" className="mt-4">
+                <form onSubmit={handleSubmit} className="flex flex-col gap-4 text-left">
+                  <div>
+                    <Label htmlFor="signup-email">Email</Label>
+                    <Input
+                      id="signup-email"
+                      type="email"
+                      autoComplete="email"
+                      required
+                      value={email}
+                      onChange={(event) => setEmail(event.target.value)}
+                      className="mt-1.5"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="signup-password">Password</Label>
+                    <Input
+                      id="signup-password"
+                      type="password"
+                      autoComplete="new-password"
+                      required
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      className="mt-1.5"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="signup-confirm-password">Confirm password</Label>
+                    <Input
+                      id="signup-confirm-password"
+                      type="password"
+                      autoComplete="new-password"
+                      required
+                      value={confirmPassword}
+                      onChange={(event) => setConfirmPassword(event.target.value)}
+                      className="mt-1.5"
+                    />
+                  </div>
+                  {formError && <p className="text-sm text-destructive">{formError}</p>}
+                  <Button type="submit" disabled={submitting} className="w-full">
+                    {submitting ? "Creating account…" : "Create account"}
+                  </Button>
+                </form>
+              </TabsContent>
+            </Tabs>
+
+            <div className="mt-6 flex items-center gap-3">
+              <div className="h-px flex-1 bg-border" />
+              <span className="text-xs text-muted-foreground">or</span>
+              <div className="h-px flex-1 bg-border" />
+            </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              className="mt-6 w-full"
+              onClick={() => signInWithGoogle()}
+            >
+              <GoogleIcon />
+              Continue with Google
+            </Button>
+          </>
+        )}
       </div>
     </div>
   )

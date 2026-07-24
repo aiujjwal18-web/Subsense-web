@@ -37,6 +37,18 @@ interface AuthContextValue {
   loading: boolean
   signInWithGoogle: () => Promise<void>
   signOut: () => Promise<void>
+  signInWithPassword: (
+    email: string,
+    password: string
+  ) => ReturnType<typeof supabase.auth.signInWithPassword>
+  signUpWithPassword: (
+    email: string,
+    password: string
+  ) => ReturnType<typeof supabase.auth.signUp>
+  resetPasswordForEmail: (
+    email: string
+  ) => ReturnType<typeof supabase.auth.resetPasswordForEmail>
+  updatePassword: (password: string) => ReturnType<typeof supabase.auth.updateUser>
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
@@ -119,9 +131,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut()
   }, [])
 
+  const signInWithPassword = useCallback(async (email: string, password: string) => {
+    return supabase.auth.signInWithPassword({ email, password })
+  }, [])
+
+  const signUpWithPassword = useCallback(async (email: string, password: string) => {
+    return supabase.auth.signUp({ email, password })
+  }, [])
+
+  const resetPasswordForEmail = useCallback(async (email: string) => {
+    return supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/reset-password`,
+    })
+  }, [])
+
+  const updatePassword = useCallback(async (password: string) => {
+    return supabase.auth.updateUser({ password })
+  }, [])
+
   return (
     <AuthContext.Provider
-      value={{ session, appUser, profile, preferences, loading, signInWithGoogle, signOut }}
+      value={{
+        session,
+        appUser,
+        profile,
+        preferences,
+        loading,
+        signInWithGoogle,
+        signOut,
+        signInWithPassword,
+        signUpWithPassword,
+        resetPasswordForEmail,
+        updatePassword,
+      }}
     >
       {children}
     </AuthContext.Provider>

@@ -3,7 +3,9 @@ import { BrowserRouter, Route, Routes } from "react-router-dom"
 import { AppLayout } from "@/components/shell/AppLayout"
 import { AuthProvider } from "@/features/auth/AuthContext"
 import { AuthPage } from "@/features/auth/AuthPage"
+import { ForgotPasswordPage } from "@/features/auth/ForgotPasswordPage"
 import { ProtectedRoute } from "@/features/auth/ProtectedRoute"
+import { ResetPasswordPage } from "@/features/auth/ResetPasswordPage"
 import { DecisionWorkspacePage } from "@/features/decision-workspace/DecisionWorkspacePage"
 import { InsightsPage } from "@/features/insights/InsightsPage"
 import { ProfilePage } from "@/features/profile/ProfilePage"
@@ -18,6 +20,8 @@ function App() {
       <AuthProvider>
         <Routes>
           <Route path="/auth" element={<AuthPage />} />
+          <Route path="/auth/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
           <Route
             element={
               <ProtectedRoute>
