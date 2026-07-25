@@ -28,6 +28,26 @@ Two things keep this current automatically:
 
 ---
 
+## 2026-07-25 — Login page: input placeholders, password toggle, separated pill tabs, deeper glass
+
+**Prompt:**
+Six follow-up refinements to `AuthPage.tsx`: (1) placeholder text ("Enter your email"/"Enter your password") on the four Email/Password inputs. (2) a show/hide password eye toggle (lucide-react `Eye`/`EyeOff`) on all three password-type inputs (sign-in password, sign-up password, confirm password), accessible with a toggling `aria-label`. (3) make the card read as noticeably more transparent than the current pass — lower the background alpha further, and refine the top-edge highlight from a soft border into a crisper thin bright line fading toward the corners, in addition to (not instead of) the existing ambient corner glow; iterate and screenshot-compare. (4) separate the Sign in/Create account tabs into two visually distinct pill buttons with a gap, rather than one shared-track segmented control — transparent `TabsList`, each `TabsTrigger` its own bordered pill, active gets a tinted fill. (5) unify shape: tab triggers, the submit button, and the Google button should all share the same `rounded-full` pill shape (inputs stay rectangular; don't touch the submit button's existing hover interaction). Verify visually (placeholders, working toggle, transparency, tab separation, shape consistency) and confirm zero regressions across the full auth flow including the new toggle, then commit. Told not to ask before proceeding.
+
+**What was done:**
+- **Placeholders**: added to exactly the 4 fields named — `signin-email`, `signin-password`, `signup-email`, `signup-password` — deliberately *not* added to `signup-confirm-password`, since the prompt specified "four" precisely and confirm-password wasn't one of them; flagging this again here in case it was an oversight on the prompt's part rather than intentional (easy one-line add if wanted).
+- **Password toggle**: extracted a local `PasswordField` helper (three near-identical instances would otherwise have tripled the input+button+state-wiring boilerplate) rendering the `Input` plus an absolutely-positioned `Eye`/`EyeOff` toggle button inside it, switching `type="password"`/`"text"` and its `aria-label` between "Show password"/"Hide password". Three independent `useState` flags (one per field) so toggling one doesn't affect the others.
+- **Deeper glass**: card alpha `bg-card/50` → `bg-card/25`. Removed the previous `border-t-white/10` (a barely-there border color) and replaced it with an actual `absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/70 to-transparent` div — a real rendered line rather than just a tinted border, fading out toward both corners as asked — kept as an *addition* alongside the existing `-z-10` corner glow blob, not a replacement for it.
+- **Separated pill tabs**: `TabsList` overridden to `bg-transparent gap-2 p-0` (was the shared `bg-muted` track). Each `TabsTrigger` gets a `pillTabTriggerClass()` helper producing `rounded-full border border-border/60 bg-transparent` at rest and `border-primary/40 bg-primary/15 text-foreground` when `data-active`. This needed care: the shared `Tabs` primitive's own `TabsTrigger` already ships hardcoded `dark:data-active:bg-input/30`/`dark:data-active:border-input` classes, and `tailwind-merge` (this codebase's `cn()`) only dedupes classes that share the *exact* variant-prefix chain — `dark:data-active:bg-primary/15` beats `dark:data-active:bg-input/30` because they're the same chain, but a plain `data-active:bg-primary/15` would NOT have beaten the `dark:`-prefixed one and could've lost the cascade in this permanently-dark app. Included the `dark:` variants explicitly for that reason, not just the base ones.
+- **Shape consistency**: `InteractiveHoverButton` was already `rounded-full` by default (no change needed). Added `rounded-full` to the Google button's className (shadcn `Button`'s own base is `rounded-lg`; the `cn()`-merged override replaces it cleanly). Confirmed all three (tabs, submit, Google) now compute to the identical `border-radius` value.
+
+**Verification:**
+- `npm run build` / `npm run lint`: clean, same 4 pre-existing lint errors, no new ones.
+- Manual smoke test (headless Chromium, 1440×900): read the card's computed background alpha (`0.25`, down from `0.5`) and confirmed via full-page + close-up screenshots that considerably more of the starfield is now visible through and around the card — a real, visible jump versus the prior pass, not "slightly less opaque." Confirmed both placeholder strings render via `getAttribute`, and confirmed `signup-confirm-password` correctly has no placeholder (matching the literal 4-field scope above). Clicked the eye toggle and confirmed the input's `type` actually flips `password` → `text` (and the `aria-label` flips with it), with the typed value preserved across the toggle. Measured the two tabs' bounding boxes — an 8px real gap between them, both reading as separate pill buttons in the screenshot with visibly different active/inactive treatment. Measured computed `border-radius` on the active tab, the submit button, and the Google button — all three resolve to the same value, confirming shape consistency. Re-ran the complete auth-flow regression (bad-password error — this time performed *through* a toggled-visible password field to make sure the toggle doesn't interfere with submission — signup check-email state, back-to-sign-in link, the client-side password-mismatch check, forgot-password confirmation, reset-password page) — all still pass, zero console errors.
+
+**Commit:** (see next entry — logged automatically by the post-commit hook)
+
+---
+
 ## 2026-07-25 — Login page: actually-visible glass (corner glow, sheen, rounder corners)
 
 **Prompt:**
@@ -368,3 +388,5 @@ Implement Phase 2 (Authentication and Profile) for SubSense per 16_Implementatio
 **Commit logged:** `fcd2272` — "Log commit trailer for ddb8c24 (glass card + hover button)" (2026-07-25 14:11) — 1 file changed, 2 insertions(+)
 
 **Commit logged:** `8e90d7e` — "Login page: actually-visible glass (corner glow, sheen, rounder corners)" (2026-07-25 14:30) — 3 files changed, 199 insertions(+), 138 deletions(-)
+
+**Commit logged:** `a94abf7` — "Log commit trailer for 8e90d7e (visible glass card)" (2026-07-25 14:31) — 1 file changed, 2 insertions(+)

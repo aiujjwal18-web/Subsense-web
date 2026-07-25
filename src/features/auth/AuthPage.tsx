@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react"
+import { Eye, EyeOff } from "lucide-react"
 import { Link, Navigate } from "react-router-dom"
 
 import { KineticText } from "@/components/brand/KineticText"
@@ -11,6 +12,7 @@ import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { getAuthErrorMessage } from "@/features/auth/auth-error"
 import { useAuth } from "@/features/auth/AuthContext"
+import { cn } from "@/lib/utils"
 
 function GoogleIcon() {
   return (
@@ -35,6 +37,64 @@ function GoogleIcon() {
   )
 }
 
+// Shared shape for all 3 password fields (sign-in, sign-up, sign-up
+// confirm) — same input + show/hide-eye-button pattern each time, only the
+// id/value/visibility state differ. `placeholder` is optional since the
+// confirm-password field isn't in scope for placeholder copy.
+function PasswordField({
+  id,
+  autoComplete,
+  value,
+  onChange,
+  placeholder,
+  visible,
+  onToggleVisible,
+}: {
+  id: string
+  autoComplete: string
+  value: string
+  onChange: (value: string) => void
+  placeholder?: string
+  visible: boolean
+  onToggleVisible: () => void
+}) {
+  return (
+    <div className="relative mt-1.5">
+      <Input
+        id={id}
+        type={visible ? "text" : "password"}
+        autoComplete={autoComplete}
+        required
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        className="pr-9"
+      />
+      <button
+        type="button"
+        onClick={onToggleVisible}
+        aria-label={visible ? "Hide password" : "Show password"}
+        className="absolute top-1/2 right-2.5 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+      >
+        {visible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+      </button>
+    </div>
+  )
+}
+
+// Two independent pill buttons rather than one shared-track segmented
+// control — beats the shared Tabs primitive's own baked-in data-active
+// styling (bg-background / dark:bg-input etc.) by targeting the exact same
+// variant-chain slots so tailwind-merge actually dedupes them, rather than
+// letting both sets of classes coexist and fight over specificity.
+function pillTabTriggerClass() {
+  return cn(
+    "flex-1 rounded-full border border-border/60 bg-transparent px-4 text-foreground/60",
+    "data-active:border-primary/40 data-active:bg-primary/15 data-active:text-foreground data-active:shadow-none",
+    "dark:border-border/60 dark:data-active:border-primary/40 dark:data-active:bg-primary/15 dark:data-active:text-foreground"
+  )
+}
+
 export function AuthPage() {
   const { session, loading, signInWithGoogle, signInWithPassword, signUpWithPassword } =
     useAuth()
@@ -46,6 +106,10 @@ export function AuthPage() {
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [checkEmail, setCheckEmail] = useState(false)
+
+  const [showSigninPassword, setShowSigninPassword] = useState(false)
+  const [showSignupPassword, setShowSignupPassword] = useState(false)
+  const [showSignupConfirmPassword, setShowSignupConfirmPassword] = useState(false)
 
   if (!loading && session) {
     return <Navigate to="/" replace />
@@ -120,7 +184,15 @@ export function AuthPage() {
                 not routed through --radius, so it won't drift if that
                 token ever changes. To be recorded as a login-page visual
                 exception, not applied anywhere else. */}
-            <div className="relative overflow-hidden rounded-[28px] border border-border border-t-white/10 bg-card/50 p-8 text-center shadow-2xl shadow-black/40 backdrop-blur-xl">
+            <div className="relative overflow-hidden rounded-[28px] border border-border bg-card/25 p-8 text-center shadow-2xl shadow-black/40 backdrop-blur-xl">
+              {/* Crisp top-edge highlight, separate from the ambient corner
+                  glow above — a thin bright line fading toward both
+                  corners, the classic "glass pane" edge cue. */}
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/70 to-transparent"
+              />
+
               {/* Diagonal glass sheen */}
               <div
                 aria-hidden="true"
@@ -156,9 +228,13 @@ export function AuthPage() {
                         setFormError(null)
                       }}
                     >
-                      <TabsList className="w-full">
-                        <TabsTrigger value="signin">Sign in</TabsTrigger>
-                        <TabsTrigger value="signup">Create account</TabsTrigger>
+                      <TabsList className="w-full gap-2 bg-transparent p-0">
+                        <TabsTrigger value="signin" className={pillTabTriggerClass()}>
+                          Sign in
+                        </TabsTrigger>
+                        <TabsTrigger value="signup" className={pillTabTriggerClass()}>
+                          Create account
+                        </TabsTrigger>
                       </TabsList>
 
                       <TabsContent value="signin" className="mt-4">
@@ -172,19 +248,20 @@ export function AuthPage() {
                               required
                               value={email}
                               onChange={(event) => setEmail(event.target.value)}
+                              placeholder="Enter your email"
                               className="mt-1.5"
                             />
                           </div>
                           <div>
                             <Label htmlFor="signin-password">Password</Label>
-                            <Input
+                            <PasswordField
                               id="signin-password"
-                              type="password"
                               autoComplete="current-password"
-                              required
                               value={password}
-                              onChange={(event) => setPassword(event.target.value)}
-                              className="mt-1.5"
+                              onChange={setPassword}
+                              placeholder="Enter your password"
+                              visible={showSigninPassword}
+                              onToggleVisible={() => setShowSigninPassword((v) => !v)}
                             />
                             <Link
                               to="/auth/forgot-password"
@@ -214,31 +291,31 @@ export function AuthPage() {
                               required
                               value={email}
                               onChange={(event) => setEmail(event.target.value)}
+                              placeholder="Enter your email"
                               className="mt-1.5"
                             />
                           </div>
                           <div>
                             <Label htmlFor="signup-password">Password</Label>
-                            <Input
+                            <PasswordField
                               id="signup-password"
-                              type="password"
                               autoComplete="new-password"
-                              required
                               value={password}
-                              onChange={(event) => setPassword(event.target.value)}
-                              className="mt-1.5"
+                              onChange={setPassword}
+                              placeholder="Enter your password"
+                              visible={showSignupPassword}
+                              onToggleVisible={() => setShowSignupPassword((v) => !v)}
                             />
                           </div>
                           <div>
                             <Label htmlFor="signup-confirm-password">Confirm password</Label>
-                            <Input
+                            <PasswordField
                               id="signup-confirm-password"
-                              type="password"
                               autoComplete="new-password"
-                              required
                               value={confirmPassword}
-                              onChange={(event) => setConfirmPassword(event.target.value)}
-                              className="mt-1.5"
+                              onChange={setConfirmPassword}
+                              visible={showSignupConfirmPassword}
+                              onToggleVisible={() => setShowSignupConfirmPassword((v) => !v)}
                             />
                           </div>
                           {formError && <p className="text-sm text-destructive">{formError}</p>}
@@ -261,7 +338,7 @@ export function AuthPage() {
                     <Button
                       type="button"
                       variant="outline"
-                      className="mt-6 w-full"
+                      className="mt-6 w-full rounded-full"
                       onClick={() => signInWithGoogle()}
                     >
                       <GoogleIcon />
