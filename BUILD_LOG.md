@@ -366,3 +366,5 @@ Implement Phase 2 (Authentication and Profile) for SubSense per 16_Implementatio
 **Commit logged:** `ddb8c24` — "Login page: intensified glass card + InteractiveHoverButton primary CTA" (2026-07-25 14:10) — 3 files changed, 69 insertions(+), 7 deletions(-)
 
 **Commit logged:** `fcd2272` — "Log commit trailer for ddb8c24 (glass card + hover button)" (2026-07-25 14:11) — 1 file changed, 2 insertions(+)
+
+**Commit logged:** `8e90d7e` — "Login page: actually-visible glass (corner glow, sheen, rounder corners)" (2026-07-25 14:30) — 3 files changed, 199 insertions(+), 138 deletions(-)
