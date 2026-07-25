@@ -28,6 +28,25 @@ Two things keep this current automatically:
 
 ---
 
+## 2026-07-25 — Login page: actual visible stars through card and logo (opacity vs. blur were separate problems)
+
+**Prompt:**
+The glass card and logo still don't show visible stars through them despite lower opacity, because opacity and blur strength are two separate variables — strong blur smears point-like particles into a haze regardless of transparency, and the logo tile likely still had a fully opaque solid background never made translucent at all. (1) Diagnose the logo first — check for a solid opaque fill blocking everything behind it, confirm before assuming anything else. (2) Fix it: translucent + blurred tile background (SVG has no native `backdrop-filter`, so wrap in a div if needed), keeping the S-curve, its color, size, and existing sheen exactly as-is. (3) Fix the card's blur amount — drop significantly from the current 24px-class value to the 4–8px range, and re-tune alpha together with it, iterating until individual star dots are visible, not just a lighter tint. (4) Verify the actual DOM/stacking order confirms the sparkles canvas has nothing opaque between it and the card/logo. (5) Verify with zoomed screenshots of both regions specifically, confirm zero auth-flow regressions, commit.
+
+**What was done:**
+- **Diagnosed before touching anything, per the explicit instruction**: read `LogoIcon.tsx` directly — line 26 was `<rect ... fill="var(--popover)" />`, and `--popover` resolves to the literal solid hex `#1E293B` with no alpha component at all. Confirmed this is exactly the reported root cause: a fully opaque SVG shape sitting between the viewer and anything behind it blocks 100% of that content regardless of any transparency or blur work done anywhere else in the page — no amount of card-level tuning could ever have fixed this independently, since the logo has its own separate opaque layer.
+- **Fixed the logo**: since SVG has no direct `backdrop-filter` equivalent, moved the glass treatment out to a wrapping `<div>` (`bg-popover/40 backdrop-blur-sm`, `rounded-[22.5%]` — matching the SVG's own `rx="9"` on a 40-unit viewBox as a percentage, so the radius stays correct at any rendered size) and deleted the opaque background `<rect>` entirely from the SVG — only the sheen gradient `<rect>` remains inside it now, layered over the div's own translucent+blurred background. The S-curve `<path>` (color, geometry, stroke width) and the sheen gradient are byte-identical to before. `LogoIcon`'s public API (`className` prop, sizing via `size-*`) is unchanged, so `Header.tsx`'s existing icon-only usage needed no changes and was re-verified working.
+- **Fixed the card's blur**: `backdrop-blur-xl` (24px) → `backdrop-blur-sm` (8px per this project's unmodified default Tailwind v4 blur scale, confirmed no `--blur-*` overrides exist in `index.css`). Re-tuned alpha alongside it rather than in isolation, as instructed — landed on `bg-card/35` (up slightly from the prior pass's `/25`, since less blur means less diffusion "coverage," and pure lower-alpha-with-low-blur first looked too sparse/harsh on individual dots before this adjustment) after a screenshot-compare iteration.
+- **Stacking order**: walked the actual DOM ancestor chain from the live `<canvas>` element up to the page root and read each ancestor's computed `position`/`z-index`/`background-color` — confirmed the canvas itself and every intermediate wrapper up to the page root are fully transparent (`rgba(0,0,0,0)`), with only the page root itself carrying the opaque `bg-background` fill *behind* the canvas in paint order (an ancestor's own background necessarily paints behind its descendants, so this isn't a blocking layer). No opaque layer sits between the canvas and either the card or the logo — this was never a stacking bug, matching what the prior round's `blur(24px)` measurement already implied (a real haze was being sampled, just an over-smeared one).
+
+**Verification:**
+- `npm run build` / `npm run lint`: clean, same 4 pre-existing lint errors, no new ones.
+- Manual smoke test (headless Chromium, 1440×900 at 2x device scale for pixel-level clarity): confirmed via `getComputedStyle` that the card resolves to alpha `0.35`/`blur(8px)` and the logo wrapper to alpha `0.4`/`blur(8px)`. Zoomed close-up screenshots of both the card and the logo tile show genuinely discrete, point-like star dots visible through each — a real, qualitative difference from the prior pass's soft ambient glow, matching the bar the task set ("individual star dots... not just an ambient glow or a marginally lighter tint"). A full-page screenshot confirms the same at normal viewing scale. Re-verified `Header.tsx`'s icon-only usage (via the fake-session technique) still renders as a normal-looking solid icon tile in that flat-background context — expected, since blurring a flat color is visually a no-op, so no regression there despite the shared component's structural change. Re-ran the complete auth-flow regression (bad-password error, signup check-email, back-to-sign-in, forgot-password confirmation, reset-password page) — all still pass, zero unexpected console errors (only the expected 401s from the unrelated fake-session Header check).
+
+**Commit:** (see next entry — logged automatically by the post-commit hook)
+
+---
+
 ## 2026-07-25 — Login page: input placeholders, password toggle, separated pill tabs, deeper glass
 
 **Prompt:**
@@ -392,3 +411,5 @@ Implement Phase 2 (Authentication and Profile) for SubSense per 16_Implementatio
 **Commit logged:** `a94abf7` — "Log commit trailer for 8e90d7e (visible glass card)" (2026-07-25 14:31) — 1 file changed, 2 insertions(+)
 
 **Commit logged:** `2d28c12` — "Login page: input placeholders, password toggle, separated pill tabs, deeper glass" (2026-07-25 15:03) — 2 files changed, 119 insertions(+), 20 deletions(-)
+
+**Commit logged:** `2971661` — "Log commit trailer for 2d28c12 (input refinements)" (2026-07-25 15:03) — 1 file changed, 2 insertions(+)

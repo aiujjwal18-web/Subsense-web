@@ -184,7 +184,7 @@ export function AuthPage() {
                 not routed through --radius, so it won't drift if that
                 token ever changes. To be recorded as a login-page visual
                 exception, not applied anywhere else. */}
-            <div className="relative overflow-hidden rounded-[28px] border border-border bg-card/25 p-8 text-center shadow-2xl shadow-black/40 backdrop-blur-xl">
+            <div className="relative overflow-hidden rounded-[28px] border border-border bg-card/35 p-8 text-center shadow-2xl shadow-black/40 backdrop-blur-sm">
               {/* Crisp top-edge highlight, separate from the ambient corner
                   glow above — a thin bright line fading toward both
                   corners, the classic "glass pane" edge cue. */}
