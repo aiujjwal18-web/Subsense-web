@@ -28,6 +28,31 @@ Two things keep this current automatically:
 
 ---
 
+## 2026-07-25 — Typewriter effect for KineticText; tagline moves under the wordmark
+
+**Prompt:**
+Background/sparkles/card/button treatment now locked — don't touch those this pass. (1) Move the tagline into the sign-in card, above the tabs; hero column keeps just logo+wordmark. (2) Update tagline copy to "Track smarter. Renew wiser." (approved final copy). (3) Add a `effect="typewriter"` mode to `KineticText` (alongside the existing stagger mode), reusing the existing hover-replay plumbing and `by="character"|"word"` prop: sequential left-to-right reveal via `motion/react` (not a raw interval loop), a blinking cursor after the last revealed character while typing and briefly after, wordmark types at ~65ms/char then a ~0.5s pause then the tagline types at ~35ms/char. (4) Apply `effect="typewriter"` to both wordmark and tagline, removing the old stagger usage for both. (5) Verify with screenshots at intervals confirming progressive (not instant) reveal, cursor blink/clear, hover-replay on both, correct card positioning, zero auth-flow regressions.
+
+Mid-task correction (before verification/commit): the tagline was moved back OUT of the card to its original spot directly under the wordmark in the hero column (copy/typewriter/hover-replay unchanged, placement-only reversal) — the card goes back to nothing above its tabs. Added a `keepCursorAfter` prop (default `false`) so only the tagline (the last element in the typed sequence) keeps its cursor blinking after typing finishes; the wordmark's cursor now clears once its own typing completes instead of lingering.
+
+**What was done:**
+- `KineticText.tsx`: added `effect?: "stagger" | "typewriter"`, `speed?`, `startDelay?`, and `keepCursorAfter?` props. Split the existing per-character/word fade-up logic into its own `StaggerSegments` (unchanged behavior, default `effect`), and added `TypewriterSegments` for the new mode — a `revealedText` state string grown via `motion/react`'s imperative `animate(0, totalSteps, {...})` tied to `onUpdate`, which is a real Motion-owned timeline (not a hand-rolled `setInterval`), rather than pre-rendering every character at `opacity:0` the way stagger mode does.
+- Found and fixed **three real bugs** while building and verifying this, none of them assumptions — each confirmed via direct inspection (computed layout, DOM mutation observers, or step-by-step screenshots) before being "fixed":
+  1. **Resize-driven hover feedback loop**: rendering only the revealed substring meant the element's box grew as it typed. Under a stationary mouse, a growing box repeatedly re-crosses the pointer's position, firing genuine extra `mouseenter` events mid-replay — observed directly as the revealed text length jumping backward ("Su" → "S" → "") when hovering. Fixed by reserving the full string's footprint up front via an invisible sizer span (the same technique `StaggerSegments` already uses via its placeholder characters), with the visible reveal absolutely positioned inside that stable-sized box.
+  2. **Continuous mouseenter re-firing tied to the cursor's own blink animation**: even after fixing (1), a `MutationObserver` + explicit `mouseenter` counter showed the handler firing ~91 times in 1.5s (~every animation frame) while the mouse sat still — traced to the cursor's own blinking Motion animation somehow causing the browser to keep re-evaluating hit-testing under a stationary pointer. Rather than chase the exact browser mechanism further, added a 500ms debounce on the hover handler itself — a simple, robust guard against rapid re-triggers regardless of their precise cause.
+  3. **Cursor wrapping to a phantom second line**: confirmed via actual bounding-box inspection (not eyeballing) that the overlay span's width was tied *exactly* to the sizer's natural width with zero pixels of slack, so the cursor (2px + margin) had nowhere left on the line and wrapped below the text every time. Fixed with `whitespace-nowrap` on the reveal overlay.
+  4. Also made the cursor's post-typing hide deterministic (a scheduled `setTimeout` once entering the "fading" phase) rather than depending on a `motion.span`'s `onAnimationComplete` firing correctly across a mid-flight swap from an infinite-repeat transition to a finite one — that handoff isn't guaranteed to behave like a fresh animation.
+  5. `startDelay` is now only applied on a component's *initial* mount (`playCount === 0`), not on hover-triggered replays — otherwise the tagline's 1s sequencing pause (meant only to hand off from the wordmark on page load) would also make every direct hover-replay of the tagline feel like it hung for a second before responding.
+- `AuthPage.tsx`: tagline restored to the hero column under "SubSense" (`mt-5 max-w-sm lg:pl-20`, same left-edge alignment as before), copy updated to "Track smarter. Renew wiser.", both `KineticText` instances switched from stagger to `effect="typewriter"` — wordmark at `speed={0.065}`, tagline at `speed={0.035} startDelay={1} keepCursorAfter`.
+
+**Verification:**
+- `npm run build` / `npm run lint`: clean, same 4 pre-existing lint errors, no new ones.
+- Manual smoke test (headless Chromium): confirmed via DOM queries that the tagline lives inside the hero container and is absent from the card entirely. Stepped through the natural load sequence at controlled intervals — wordmark fully typed and its cursor gone by ~2s, tagline handing off correctly and its cursor persisting at 4s+. Verified hover-replay on the wordmark is now genuinely monotonic (character count only ever increases) and its cursor clears again afterward; verified hover-replay on the tagline starts immediately (no leftover startDelay pause) and its cursor keeps blinking afterward, per `keepCursorAfter`. Final full-page and close-up screenshots confirm the cursor sits correctly inline right after "wiser." with no phantom line wrap. Re-ran the complete existing auth-flow regression (bad-password error, signup check-email, back-to-sign-in, password toggle, forgot-password confirmation, reset-password page) — all pass, zero console errors.
+
+**Commit:** (see next entry — logged automatically by the post-commit hook)
+
+---
+
 ## 2026-07-25 — Fix: non-uniform star density band from the two-layer sparkles approach
 
 **Prompt:**
@@ -460,3 +485,5 @@ Implement Phase 2 (Authentication and Profile) for SubSense per 16_Implementatio
 **Commit logged:** `c84e361` — "Log commit trailer for c20d3a2 (transparency push)" (2026-07-25 15:33) — 1 file changed, 2 insertions(+)
 
 **Commit logged:** `e488ca8` — "Fix: non-uniform star density band from the two-layer sparkles approach" (2026-07-25 15:44) — 2 files changed, 36 insertions(+), 22 deletions(-)
+
+**Commit logged:** `913d329` — "Log commit trailer for e488ca8 (uniform star density fix)" (2026-07-25 15:45) — 1 file changed, 2 insertions(+)

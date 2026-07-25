@@ -169,15 +169,24 @@ export function AuthPage() {
             <LogoIcon className="size-16 shrink-0" />
             <KineticText
               text="SubSense"
+              effect="typewriter"
+              speed={0.065}
               className="font-heading text-5xl font-semibold text-foreground"
             />
           </div>
           {/* pl-20 = icon (size-16 = 4rem) + gap-4 (1rem), so this lines up
-              under the wordmark's left edge, not the icon's. */}
+              under the wordmark's left edge, not the icon's. startDelay
+              hands off from the wordmark's own typing (8 chars × 0.065s ≈
+              0.52s) plus a ~0.5s pause. keepCursorAfter: this is the last
+              element in the sequence, so its cursor stays blinking instead
+              of fading — the wordmark's own cursor clears once it's done. */}
           <div className="mt-5 max-w-sm lg:pl-20">
             <KineticText
-              text="Sign in to track your subscriptions."
-              by="word"
+              text="Track smarter. Renew wiser."
+              effect="typewriter"
+              speed={0.035}
+              startDelay={1}
+              keepCursorAfter
               className="text-base text-foreground/70"
             />
           </div>
