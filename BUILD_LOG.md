@@ -28,6 +28,25 @@ Two things keep this current automatically:
 
 ---
 
+## 2026-07-25 — Login page: push transparency until stars are unmistakable at normal scale
+
+**Prompt:**
+Previous passes are technically correct but the glass effect still isn't perceptible at normal viewing scale — two variables need to move much further, plus a targeted particle boost. (1) Card opacity down to the 12–18% range (e.g. `bg-card/15`), compensating for legibility with a text-shadow on the card's text and a stronger border rather than relying on the background for contrast. (2) Reduce or remove the backdrop-blur entirely — aim for "tinted glass" over "frosted glass"; visual noise from unblurred particles is fine. (3) Same treatment on the logo tile: `bg-popover` down to 15–20%, blur reduced/removed, plus a drop-shadow on the glyph for legibility. (4) Boost particle visibility specifically behind the card and logo — the ambient full-page field is tuned for subtlety and is likely too sparse in any card-sized region on its own; add a second, denser/brighter `SparklesCore` layered specifically behind that content, in addition to the ambient one. (5) Verify with real, non-zoomed, full-page screenshots at normal scale — the bar is an ordinary person noticing stars at 100%, not a 2x zoomed crop technically containing brighter pixels; if it's still not clearly visible, stop and report back rather than iterating blindly. (6) Confirm legibility and zero auth-flow regressions, commit.
+
+**What was done:**
+- `src/components/ui/sparkles.tsx`: added optional `minOpacity`/`maxOpacity` props (defaulting to the existing `0.1`/`0.8`, so the ambient instance's behavior is completely unchanged) so a second, brighter-tuned instance could be added without touching the first.
+- `AuthPage.tsx`: added a second `SparklesCore` (`auth-sparkles-boost`) inside the hero+card content row specifically — `particleDensity={220}` (vs. the ambient default `60`), `minSize={1} maxSize={2.6}` (vs. `0.6`/`1.4`), `minOpacity={0.4} maxOpacity={1}` — positioned `absolute -inset-x-6 -inset-y-10 -z-10` so it spans both the hero/logo area and the card area in one layer, sitting behind both via the same `-z-10`-relative-to-a-positioned-parent technique already used for the corner glow (negative z-index positioned elements paint behind non-positioned in-flow content in the same stacking context — confirmed this was the correct, safe pattern rather than guessing).
+- Card: `bg-card/35` → `bg-card/15`; `backdrop-blur-sm` removed entirely (no backdrop-blur class at all — genuinely tinted, not frosted, per the instruction); `border-border` → `border-border-strong` for the "stronger border" ask. (The prompt's own suggested `border-border/60` would actually have gone the *opposite* direction — `--border` is already a low-alpha `rgba(255,255,255,0.08)`, and multiplying by 60% weakens it further. `--border-strong` — `rgba(255,255,255,0.16)`, double `--border`'s opacity — already exists in `index.css` from the original Ledger Dark token set specifically as an "emphasized border tier," unused until now; that's the correct fix for the actual stated intent.) Added `text-shadow-lg` (Tailwind v4's built-in text-shadow scale, confirmed present in this version rather than assumed) to the card's content wrapper — `text-shadow` is an inherited CSS property, so every descendant label/heading/button text picks it up from one class rather than being annotated individually.
+- `LogoIcon.tsx`: wrapper `bg-popover/40` → `bg-popover/18`; removed `backdrop-blur-sm` entirely (a tile this small has so few particles behind it that even a light blur smeared them to nothing); added `drop-shadow-md` to the S-curve `<path>` for the equivalent legibility compensation on the glyph itself. Comments updated to explain the "tinted not frosted" reasoning at this scale, matching the card.
+
+**Verification:**
+- `npm run build` / `npm run lint`: clean, same 4 pre-existing lint errors, no new ones.
+- Manual smoke test (headless Chromium, **1440×900 at normal 1x device scale, full-page, non-zoomed** — deliberately not the 2x zoomed-crop approach from the previous round, per the explicit instruction not to declare success on a technicality): confirmed via `getComputedStyle` that the card resolves to alpha `0.15`/`backdrop-filter: none`/`border-color: rgba(255,255,255,0.16)`, the logo wrapper to alpha `0.18`/`backdrop-filter: none`, and the label's `text-shadow` is genuinely applied. Two full-page screenshots taken 1.5s apart at normal scale show — honestly, without qualification — individual white star dots clearly and unmistakably visible scattered across the card body (over the tabs, input fields, and button) and inside the logo tile, in different positions between the two shots (confirming live particle movement, not a static texture). This reads as looking through glass at a starfield at ordinary viewing scale, meeting the bar the task set. Re-ran the complete auth-flow regression (bad-password error, signup check-email, back-to-sign-in, the password show/hide toggle, forgot-password confirmation, reset-password page) — all still pass, zero unexpected console errors. Also checked `ForgotPasswordPage.tsx` (untouched this round, out of scope) still renders correctly with the shared `LogoIcon` change — no regression there since its own card kept its separate, more opaque styling from an earlier round.
+
+**Commit:** (see next entry — logged automatically by the post-commit hook)
+
+---
+
 ## 2026-07-25 — Login page: actual visible stars through card and logo (opacity vs. blur were separate problems)
 
 **Prompt:**
@@ -415,3 +434,5 @@ Implement Phase 2 (Authentication and Profile) for SubSense per 16_Implementatio
 **Commit logged:** `2971661` — "Log commit trailer for 2d28c12 (input refinements)" (2026-07-25 15:03) — 1 file changed, 2 insertions(+)
 
 **Commit logged:** `3c66eb1` — "Login page: actual visible stars through card and logo" (2026-07-25 15:17) — 3 files changed, 64 insertions(+), 27 deletions(-)
+
+**Commit logged:** `834708b` — "Log commit trailer for 3c66eb1 (visible stars fix)" (2026-07-25 15:17) — 1 file changed, 2 insertions(+)

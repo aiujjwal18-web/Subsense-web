@@ -148,6 +148,27 @@ export function AuthPage() {
       </div>
 
       <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col items-center gap-16 lg:flex-row lg:items-center lg:justify-between">
+        {/* Denser, brighter sparkles specifically behind the hero+card
+            content, layered on top of the ambient full-page field above —
+            that one's tuned for a subtle page-wide backdrop and is simply
+            too sparse in any single card-sized region to read as "stars"
+            once seen through much-more-transparent glass. -z-10 (like the
+            corner glow below) keeps this behind the hero/card content
+            regardless of DOM order, without needing to touch their own
+            positioning. */}
+        <div aria-hidden="true" className="pointer-events-none absolute -inset-x-6 -inset-y-10 -z-10">
+          <SparklesCore
+            id="auth-sparkles-boost"
+            className="h-full w-full"
+            particleDensity={220}
+            minSize={1}
+            maxSize={2.6}
+            speed={0.6}
+            minOpacity={0.4}
+            maxOpacity={1}
+          />
+        </div>
+
         {/* Hero — standalone brand messaging, not a card header */}
         <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
           <div className="flex items-center gap-4">
@@ -184,7 +205,7 @@ export function AuthPage() {
                 not routed through --radius, so it won't drift if that
                 token ever changes. To be recorded as a login-page visual
                 exception, not applied anywhere else. */}
-            <div className="relative overflow-hidden rounded-[28px] border border-border bg-card/35 p-8 text-center shadow-2xl shadow-black/40 backdrop-blur-sm">
+            <div className="relative overflow-hidden rounded-[28px] border border-border-strong bg-card/15 p-8 text-center shadow-2xl shadow-black/40">
               {/* Crisp top-edge highlight, separate from the ambient corner
                   glow above — a thin bright line fading toward both
                   corners, the classic "glass pane" edge cue. */}
@@ -199,7 +220,11 @@ export function AuthPage() {
                 className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-transparent"
               />
 
-              <div className="relative z-10">
+              {/* text-shadow-lg compensates for the much lower card alpha
+                  above — inherited by every descendant text node (labels,
+                  tab text, button labels) rather than annotated one by
+                  one, since text-shadow is an inherited CSS property. */}
+              <div className="relative z-10 text-shadow-lg">
                 {checkEmail ? (
                   <div>
                     <p className="text-sm text-muted-foreground">

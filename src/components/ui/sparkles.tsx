@@ -30,6 +30,8 @@ interface SparklesCoreProps {
   speed?: number
   particleColor?: string
   particleDensity?: number
+  minOpacity?: number
+  maxOpacity?: number
 }
 
 export function SparklesCore(props: SparklesCoreProps) {
@@ -49,6 +51,8 @@ function SparklesParticles({
   speed = 0.8,
   particleColor,
   particleDensity = 60,
+  minOpacity = 0.1,
+  maxOpacity = 0.8,
 }: SparklesCoreProps) {
   const generatedId = useId()
   const { loaded } = useParticlesProvider()
@@ -103,7 +107,7 @@ function SparklesParticles({
                 density: { enable: true, width: 400, height: 400 },
               },
               opacity: {
-                value: { min: 0.1, max: 0.8 },
+                value: { min: minOpacity, max: maxOpacity },
                 animation: {
                   enable: true,
                   speed: 1,

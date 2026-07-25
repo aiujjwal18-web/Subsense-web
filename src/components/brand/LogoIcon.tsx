@@ -14,18 +14,19 @@ export function LogoIcon({ className }: LogoIconProps) {
 
   return (
     // SVG has no direct equivalent of CSS backdrop-filter, so the glass
-    // treatment lives on this wrapping div (translucent bg + blur) instead
-    // of on a <rect>. The base tile fill inside the SVG itself used to be
-    // a fully opaque var(--popover) — that alone blocked anything behind
-    // it regardless of any transparency/blur work done elsewhere, so it's
+    // treatment lives on this wrapping div (translucent bg) instead of on
+    // a <rect>. The base tile fill inside the SVG itself used to be a
+    // fully opaque var(--popover) — that alone blocked anything behind it
+    // regardless of any transparency/blur work done elsewhere, so it's
     // gone entirely now; only the sheen gradient remains inside the SVG.
+    // No backdrop-blur here (tinted glass, not frosted) — at this alpha
+    // (18%) any blur smeared the few particles behind a tile this small
+    // into nothing; the S-curve gets its own drop-shadow below to stay
+    // legible against whatever's now visible through the tile.
     // rounded-[22.5%] mirrors the SVG's own rx="9" on a 40-unit viewBox
     // (9/40) so the div's corner radius matches the artwork at any size.
     <div
-      className={cn(
-        "relative overflow-hidden rounded-[22.5%] bg-popover/40 backdrop-blur-sm",
-        className
-      )}
+      className={cn("relative overflow-hidden rounded-[22.5%] bg-popover/18", className)}
     >
       <svg
         viewBox="0 0 40 40"
@@ -51,6 +52,7 @@ export function LogoIcon({ className }: LogoIconProps) {
           strokeWidth="3.4"
           strokeLinecap="round"
           strokeLinejoin="round"
+          className="drop-shadow-md"
         />
       </svg>
     </div>
