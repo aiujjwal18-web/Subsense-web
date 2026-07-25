@@ -487,3 +487,5 @@ Implement Phase 2 (Authentication and Profile) for SubSense per 16_Implementatio
 **Commit logged:** `e488ca8` — "Fix: non-uniform star density band from the two-layer sparkles approach" (2026-07-25 15:44) — 2 files changed, 36 insertions(+), 22 deletions(-)
 
 **Commit logged:** `913d329` — "Log commit trailer for e488ca8 (uniform star density fix)" (2026-07-25 15:45) — 1 file changed, 2 insertions(+)
+
+**Commit logged:** `77d3dc6` — "Typewriter effect for KineticText; tagline moves under the wordmark" (2026-07-25 17:26) — 3 files changed, 222 insertions(+), 15 deletions(-)
