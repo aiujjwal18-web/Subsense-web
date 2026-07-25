@@ -319,3 +319,5 @@ Implement Phase 2 (Authentication and Profile) for SubSense per 16_Implementatio
 **Commit logged:** `9eb6cd3` — "Login page redesign: particle background + kinetic text" (2026-07-25 12:06) — 9 files changed, 935 insertions(+), 147 deletions(-)
 
 **Commit logged:** `e4d04e0` — "Log commit trailer for 9eb6cd3 (login page redesign)" (2026-07-25 12:07) — 1 file changed, 2 insertions(+)
+
+**Commit logged:** `502c9a7` — "Kinetic text: hover replay, word-stagger tagline, alignment, contrast" (2026-07-25 12:56) — 3 files changed, 72 insertions(+), 23 deletions(-)
