@@ -297,3 +297,5 @@ Implement Phase 2 (Authentication and Profile) for SubSense per 16_Implementatio
 **Commit logged:** `3e6c8c3` — "Log commit trailer for f9ada35 (email/password auth + fixes)" (2026-07-24 20:35) — 1 file changed, 2 insertions(+)
 
 **Commit logged:** `a2f76f0` — "Log commit trailer for 3e6c8c3" (2026-07-24 21:16) — 1 file changed, 2 insertions(+)
+
+**Commit logged:** `9eb6cd3` — "Login page redesign: particle background + kinetic text" (2026-07-25 12:06) — 9 files changed, 935 insertions(+), 147 deletions(-)
