@@ -18,6 +18,9 @@ If `taste-skill` (or any other source) suggests a GSAP-based pattern, translate 
 ### Why
 Motion has far greater adoption in the React ecosystem (~35M weekly downloads vs. GSAP's ~3M) and its declarative, component-driven API matches this project's actual animation needs: button/card hover and press states, toast/dialog enter-exit, a capped staggered list entrance. Nothing in this project involves scroll-driven storytelling or complex timelines, which is where GSAP would actually earn its keep. Running two animation libraries in one small app adds bundle size and complexity for no benefit here.
 
+### Approved exception: @tsparticles/react, @tsparticles/engine, @tsparticles/slim
+These three are installed for the login page's `SparklesCore` particle background (`src/components/ui/sparkles.tsx`). This is **not** a second animation library — tsParticles is a canvas particle-rendering engine, not a JS animation/timeline library, and doesn't overlap with what Motion is used for. `SparklesCore` still imports `useAnimation`/`motion` from `motion/react` for its own fade-in, not from `framer-motion`. Don't re-litigate or duplicate-install this set in a future session; if a similar particle effect is needed elsewhere, reuse `SparklesCore` rather than adding another particle library.
+
 ## Design system reference
 
 The project's exact design tokens (colors, spacing, radius, typography, motion timing) are defined in `src/index.css` and are the source of truth. Do not invent new colors, spacing values, or timing values outside what's already defined there. If a genuinely new value is needed, ask before adding it rather than guessing.

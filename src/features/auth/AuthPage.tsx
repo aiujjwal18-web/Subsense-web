@@ -1,7 +1,9 @@
 import { useState, type FormEvent } from "react"
 import { Link, Navigate } from "react-router-dom"
 
-import { Logo } from "@/components/brand/Logo"
+import { KineticText } from "@/components/brand/KineticText"
+import { LogoIcon } from "@/components/brand/LogoIcon"
+import { SparklesCore } from "@/components/ui/sparkles"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -75,149 +77,166 @@ export function AuthPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-6">
-      <div className="w-full max-w-sm rounded-lg border border-border bg-card p-8 text-center">
-        <Logo className="justify-center" />
-        <p className="mt-2 text-sm text-muted-foreground">
-          Sign in to track your subscriptions.
-        </p>
+    <div className="relative flex min-h-screen items-center overflow-hidden bg-background px-6 py-16 sm:px-10 lg:px-16 xl:px-20">
+      <div className="pointer-events-none absolute inset-0">
+        <SparklesCore id="auth-sparkles" className="h-full w-full" />
+      </div>
 
-        {checkEmail ? (
-          <div className="mt-8">
-            <p className="text-sm text-muted-foreground">
-              Check your email to confirm your account.
-            </p>
-            <button
-              type="button"
-              onClick={() => {
-                setCheckEmail(false)
-                setMode("signin")
-                setPassword("")
-                setConfirmPassword("")
-                setFormError(null)
-              }}
-              className="mt-4 text-sm text-primary hover:underline"
-            >
-              ← Back to sign in
-            </button>
+      <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col items-center gap-16 lg:flex-row lg:items-center lg:justify-between">
+        {/* Hero — standalone brand messaging, not a card header */}
+        <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
+          <div className="flex items-center gap-4">
+            <LogoIcon className="size-16 shrink-0" />
+            <KineticText
+              text="SubSense"
+              className="font-heading text-5xl font-semibold text-foreground"
+            />
           </div>
-        ) : (
-          <>
-            <Tabs
-              value={mode}
-              onValueChange={(value) => {
-                setMode(value as "signin" | "signup")
-                setFormError(null)
-              }}
-              className="mt-8"
-            >
-              <TabsList className="w-full">
-                <TabsTrigger value="signin">Sign in</TabsTrigger>
-                <TabsTrigger value="signup">Create account</TabsTrigger>
-              </TabsList>
+          <p className="mt-5 max-w-sm text-base text-muted-foreground">
+            Sign in to track your subscriptions.
+          </p>
+        </div>
 
-              <TabsContent value="signin" className="mt-4">
-                <form onSubmit={handleSubmit} className="flex flex-col gap-4 text-left">
-                  <div>
-                    <Label htmlFor="signin-email">Email</Label>
-                    <Input
-                      id="signin-email"
-                      type="email"
-                      autoComplete="email"
-                      required
-                      value={email}
-                      onChange={(event) => setEmail(event.target.value)}
-                      className="mt-1.5"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="signin-password">Password</Label>
-                    <Input
-                      id="signin-password"
-                      type="password"
-                      autoComplete="current-password"
-                      required
-                      value={password}
-                      onChange={(event) => setPassword(event.target.value)}
-                      className="mt-1.5"
-                    />
-                    <Link
-                      to="/auth/forgot-password"
-                      className="mt-1.5 inline-block text-xs text-primary hover:underline"
-                    >
-                      Forgot password?
-                    </Link>
-                  </div>
-                  {formError && <p className="text-sm text-destructive">{formError}</p>}
-                  <Button type="submit" disabled={submitting} className="w-full">
-                    {submitting ? "Signing in…" : "Sign in"}
-                  </Button>
-                </form>
-              </TabsContent>
+        {/* Sign-in card — offset right, with real breathing room from the edge */}
+        <div className="w-full max-w-sm shrink-0 lg:mr-8 xl:mr-16">
+          <div className="rounded-lg border border-border bg-card/85 p-8 text-center shadow-2xl shadow-black/40 backdrop-blur-md">
+            {checkEmail ? (
+              <div>
+                <p className="text-sm text-muted-foreground">
+                  Check your email to confirm your account.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCheckEmail(false)
+                    setMode("signin")
+                    setPassword("")
+                    setConfirmPassword("")
+                    setFormError(null)
+                  }}
+                  className="mt-4 text-sm text-primary hover:underline"
+                >
+                  ← Back to sign in
+                </button>
+              </div>
+            ) : (
+              <>
+                <Tabs
+                  value={mode}
+                  onValueChange={(value) => {
+                    setMode(value as "signin" | "signup")
+                    setFormError(null)
+                  }}
+                >
+                  <TabsList className="w-full">
+                    <TabsTrigger value="signin">Sign in</TabsTrigger>
+                    <TabsTrigger value="signup">Create account</TabsTrigger>
+                  </TabsList>
 
-              <TabsContent value="signup" className="mt-4">
-                <form onSubmit={handleSubmit} className="flex flex-col gap-4 text-left">
-                  <div>
-                    <Label htmlFor="signup-email">Email</Label>
-                    <Input
-                      id="signup-email"
-                      type="email"
-                      autoComplete="email"
-                      required
-                      value={email}
-                      onChange={(event) => setEmail(event.target.value)}
-                      className="mt-1.5"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="signup-password">Password</Label>
-                    <Input
-                      id="signup-password"
-                      type="password"
-                      autoComplete="new-password"
-                      required
-                      value={password}
-                      onChange={(event) => setPassword(event.target.value)}
-                      className="mt-1.5"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="signup-confirm-password">Confirm password</Label>
-                    <Input
-                      id="signup-confirm-password"
-                      type="password"
-                      autoComplete="new-password"
-                      required
-                      value={confirmPassword}
-                      onChange={(event) => setConfirmPassword(event.target.value)}
-                      className="mt-1.5"
-                    />
-                  </div>
-                  {formError && <p className="text-sm text-destructive">{formError}</p>}
-                  <Button type="submit" disabled={submitting} className="w-full">
-                    {submitting ? "Creating account…" : "Create account"}
-                  </Button>
-                </form>
-              </TabsContent>
-            </Tabs>
+                  <TabsContent value="signin" className="mt-4">
+                    <form onSubmit={handleSubmit} className="flex flex-col gap-4 text-left">
+                      <div>
+                        <Label htmlFor="signin-email">Email</Label>
+                        <Input
+                          id="signin-email"
+                          type="email"
+                          autoComplete="email"
+                          required
+                          value={email}
+                          onChange={(event) => setEmail(event.target.value)}
+                          className="mt-1.5"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="signin-password">Password</Label>
+                        <Input
+                          id="signin-password"
+                          type="password"
+                          autoComplete="current-password"
+                          required
+                          value={password}
+                          onChange={(event) => setPassword(event.target.value)}
+                          className="mt-1.5"
+                        />
+                        <Link
+                          to="/auth/forgot-password"
+                          className="mt-1.5 inline-block text-xs text-primary hover:underline"
+                        >
+                          Forgot password?
+                        </Link>
+                      </div>
+                      {formError && <p className="text-sm text-destructive">{formError}</p>}
+                      <Button type="submit" disabled={submitting} className="w-full">
+                        {submitting ? "Signing in…" : "Sign in"}
+                      </Button>
+                    </form>
+                  </TabsContent>
 
-            <div className="mt-6 flex items-center gap-3">
-              <div className="h-px flex-1 bg-border" />
-              <span className="text-xs text-muted-foreground">or</span>
-              <div className="h-px flex-1 bg-border" />
-            </div>
+                  <TabsContent value="signup" className="mt-4">
+                    <form onSubmit={handleSubmit} className="flex flex-col gap-4 text-left">
+                      <div>
+                        <Label htmlFor="signup-email">Email</Label>
+                        <Input
+                          id="signup-email"
+                          type="email"
+                          autoComplete="email"
+                          required
+                          value={email}
+                          onChange={(event) => setEmail(event.target.value)}
+                          className="mt-1.5"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="signup-password">Password</Label>
+                        <Input
+                          id="signup-password"
+                          type="password"
+                          autoComplete="new-password"
+                          required
+                          value={password}
+                          onChange={(event) => setPassword(event.target.value)}
+                          className="mt-1.5"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="signup-confirm-password">Confirm password</Label>
+                        <Input
+                          id="signup-confirm-password"
+                          type="password"
+                          autoComplete="new-password"
+                          required
+                          value={confirmPassword}
+                          onChange={(event) => setConfirmPassword(event.target.value)}
+                          className="mt-1.5"
+                        />
+                      </div>
+                      {formError && <p className="text-sm text-destructive">{formError}</p>}
+                      <Button type="submit" disabled={submitting} className="w-full">
+                        {submitting ? "Creating account…" : "Create account"}
+                      </Button>
+                    </form>
+                  </TabsContent>
+                </Tabs>
 
-            <Button
-              type="button"
-              variant="outline"
-              className="mt-6 w-full"
-              onClick={() => signInWithGoogle()}
-            >
-              <GoogleIcon />
-              Continue with Google
-            </Button>
-          </>
-        )}
+                <div className="mt-6 flex items-center gap-3">
+                  <div className="h-px flex-1 bg-border" />
+                  <span className="text-xs text-muted-foreground">or</span>
+                  <div className="h-px flex-1 bg-border" />
+                </div>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="mt-6 w-full"
+                  onClick={() => signInWithGoogle()}
+                >
+                  <GoogleIcon />
+                  Continue with Google
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   )
