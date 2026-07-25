@@ -390,3 +390,5 @@ Implement Phase 2 (Authentication and Profile) for SubSense per 16_Implementatio
 **Commit logged:** `8e90d7e` — "Login page: actually-visible glass (corner glow, sheen, rounder corners)" (2026-07-25 14:30) — 3 files changed, 199 insertions(+), 138 deletions(-)
 
 **Commit logged:** `a94abf7` — "Log commit trailer for 8e90d7e (visible glass card)" (2026-07-25 14:31) — 1 file changed, 2 insertions(+)
+
+**Commit logged:** `2d28c12` — "Login page: input placeholders, password toggle, separated pill tabs, deeper glass" (2026-07-25 15:03) — 2 files changed, 119 insertions(+), 20 deletions(-)
