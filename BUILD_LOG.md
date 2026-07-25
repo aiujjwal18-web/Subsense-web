@@ -28,6 +28,24 @@ Two things keep this current automatically:
 
 ---
 
+## 2026-07-25 — Kinetic text follow-ups: hover replay, word-stagger tagline, alignment, contrast
+
+**Prompt:**
+Four follow-up fixes to the login page redesign: (1) make `KineticText`'s stagger replayable on hover, not just on mount. (2) apply `KineticText` to the tagline too, staggering by word (not character, to avoid a 2+ second sluggish reveal on a full sentence) while keeping the wordmark's per-character stagger as-is. (3) fix the tagline's horizontal alignment — it should start under "SubSense"'s left edge, not the icon's. (4) fix the tagline's color — it reads flat/washed-out next to the white heading; brighten it using an existing token (step up from `--muted-foreground` toward `--foreground`), not a new hardcoded value. Verify with the same Playwright approach as before, then commit. Told explicitly not to ask before proceeding.
+
+**What was done:**
+- `KineticText.tsx`: added a `playCount` state bumped by `onMouseEnter` on the wrapping span, used as part of each segment's `key` — since Motion has nothing left to animate once `initial`→`animate` both resolve, remounting the segments under a fresh key is what makes the stagger replayable (matches the task's own suggested approach). Added a `by?: "character" | "word"` prop (defaults to `"character"`, unchanged behavior for existing callers) so the tagline can stagger per-word while the wordmark keeps its per-character rhythm; both reuse the same `STAGGER_STEP_SECONDS`/duration/ease as before, no new timing invented.
+- Found and fixed a real rendering bug while building word-mode: a trailing space inside a `motion.span`'s own `inline-block` content gets silently collapsed away by the browser (a known CSS quirk — trailing whitespace at an inline-block's own boundary doesn't survive the way a plain text-run space does), which made the tagline render as `"Signintotrackyoursubscriptions."` with no visible spaces at all when first tested. Fixed by moving the inter-word space out of the animated `motion.span` entirely — it's now a plain sibling text node between word spans (inside a `Fragment` sharing the same replay key), which is never subject to that collapsing behavior. Also hardened the existing per-character space handling the same class of bug could affect (a lone space character as an inline-block's *entire* content, not just its trailing content) by rendering it as a real non-breaking space instead of a plain one — belt-and-suspenders for any future short text containing a space, not just this instance.
+- `AuthPage.tsx`: added a `<KineticText text="Sign in to track your subscriptions." by="word" .../>` in place of the old plain `<p>`, wrapped in a `<div className="mt-5 max-w-sm lg:pl-20">` — `pl-20` (5rem/80px) is exactly `size-16` (the icon's 4rem) + `gap-4` (1rem) from the hero's flex row, so the tagline's left edge lines up with the wordmark's, not the icon's, at the `lg:` breakpoint where that left-aligned layout is actually in effect (mobile stays centered as a block, untouched). Color changed from `text-muted-foreground` to `text-foreground/70` — reusing the exact `text-{x}-foreground/NN` opacity-of-foreground pattern already established elsewhere in this codebase (e.g. `Sidebar.tsx`'s `text-sidebar-foreground/70` for its own "dimmed but part of the same surface" text), not a new hex value.
+
+**Verification:**
+- `npm run build` / `npm run lint`: clean, same 4 pre-existing lint errors, no new ones.
+- Manual smoke test (headless Chromium, 1440×900): measured the wordmark's first character and the tagline's first word's bounding-box x-position — identical (0px delta), confirming the alignment fix. Read the tagline's computed `color` (resolves to `--foreground` at 70% alpha) against a probe element's `text-muted-foreground` computed color — confirmed they differ and the tagline is the brighter of the two. Caught the word-collapsing bug above via an initial screenshot showing the run-together text, fixed it, then re-verified with a fresh screenshot showing correctly spaced words. Captured a multi-frame sequence around hovering both the wordmark and the tagline (50ms / mid / settled) — both visibly reset to blank and re-reveal their stagger on hover, confirming the replay behavior actually works end to end, not just that the state/key mechanism is wired up. (An automated opacity-polling check was flaky/racy against the remount timing and is not trustworthy on its own — the frame-by-frame screenshots are the real evidence here.)
+
+**Commit:** (see next entry — logged automatically by the post-commit hook)
+
+---
+
 ## 2026-07-25 — Login page redesign: particle background + kinetic text
 
 **Prompt:**
@@ -299,3 +317,5 @@ Implement Phase 2 (Authentication and Profile) for SubSense per 16_Implementatio
 **Commit logged:** `a2f76f0` — "Log commit trailer for 3e6c8c3" (2026-07-24 21:16) — 1 file changed, 2 insertions(+)
 
 **Commit logged:** `9eb6cd3` — "Login page redesign: particle background + kinetic text" (2026-07-25 12:06) — 9 files changed, 935 insertions(+), 147 deletions(-)
+
+**Commit logged:** `e4d04e0` — "Log commit trailer for 9eb6cd3 (login page redesign)" (2026-07-25 12:07) — 1 file changed, 2 insertions(+)

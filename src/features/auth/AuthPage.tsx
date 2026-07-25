@@ -92,9 +92,15 @@ export function AuthPage() {
               className="font-heading text-5xl font-semibold text-foreground"
             />
           </div>
-          <p className="mt-5 max-w-sm text-base text-muted-foreground">
-            Sign in to track your subscriptions.
-          </p>
+          {/* pl-20 = icon (size-16 = 4rem) + gap-4 (1rem), so this lines up
+              under the wordmark's left edge, not the icon's. */}
+          <div className="mt-5 max-w-sm lg:pl-20">
+            <KineticText
+              text="Sign in to track your subscriptions."
+              by="word"
+              className="text-base text-foreground/70"
+            />
+          </div>
         </div>
 
         {/* Sign-in card — offset right, with real breathing room from the edge */}
