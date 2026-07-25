@@ -458,3 +458,5 @@ Implement Phase 2 (Authentication and Profile) for SubSense per 16_Implementatio
 **Commit logged:** `c20d3a2` — "Login page: push transparency until stars are unmistakable at normal scale" (2026-07-25 15:33) — 4 files changed, 63 insertions(+), 11 deletions(-)
 
 **Commit logged:** `c84e361` — "Log commit trailer for c20d3a2 (transparency push)" (2026-07-25 15:33) — 1 file changed, 2 insertions(+)
+
+**Commit logged:** `e488ca8` — "Fix: non-uniform star density band from the two-layer sparkles approach" (2026-07-25 15:44) — 2 files changed, 36 insertions(+), 22 deletions(-)
