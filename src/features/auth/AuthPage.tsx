@@ -106,148 +106,171 @@ export function AuthPage() {
 
         {/* Sign-in card — offset right, with real breathing room from the edge */}
         <div className="w-full max-w-sm shrink-0 lg:mr-8 xl:mr-16">
-          <div className="rounded-lg border border-border border-t-white/10 bg-card/50 p-8 text-center shadow-2xl shadow-black/40 backdrop-blur-xl">
-            {checkEmail ? (
-              <div>
-                <p className="text-sm text-muted-foreground">
-                  Check your email to confirm your account.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCheckEmail(false)
-                    setMode("signin")
-                    setPassword("")
-                    setConfirmPassword("")
-                    setFormError(null)
-                  }}
-                  className="mt-4 text-sm text-primary hover:underline"
-                >
-                  ← Back to sign in
-                </button>
+          <div className="relative">
+            {/* Corner glow — the actual "glass" cue; blur alone barely reads
+                against this dark a background. Sits outside the card's own
+                overflow-hidden so it can bleed past the rounded edge. */}
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute -top-10 -left-10 -z-10 size-56 rounded-full bg-primary/30 blur-3xl"
+            />
+
+            {/* rounded-[28px]: a deliberate, one-off departure from the
+                app's 8px radius standard (DEC-049) for this card only —
+                not routed through --radius, so it won't drift if that
+                token ever changes. To be recorded as a login-page visual
+                exception, not applied anywhere else. */}
+            <div className="relative overflow-hidden rounded-[28px] border border-border border-t-white/10 bg-card/50 p-8 text-center shadow-2xl shadow-black/40 backdrop-blur-xl">
+              {/* Diagonal glass sheen */}
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-transparent"
+              />
+
+              <div className="relative z-10">
+                {checkEmail ? (
+                  <div>
+                    <p className="text-sm text-muted-foreground">
+                      Check your email to confirm your account.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCheckEmail(false)
+                        setMode("signin")
+                        setPassword("")
+                        setConfirmPassword("")
+                        setFormError(null)
+                      }}
+                      className="mt-4 text-sm text-primary hover:underline"
+                    >
+                      ← Back to sign in
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <Tabs
+                      value={mode}
+                      onValueChange={(value) => {
+                        setMode(value as "signin" | "signup")
+                        setFormError(null)
+                      }}
+                    >
+                      <TabsList className="w-full">
+                        <TabsTrigger value="signin">Sign in</TabsTrigger>
+                        <TabsTrigger value="signup">Create account</TabsTrigger>
+                      </TabsList>
+
+                      <TabsContent value="signin" className="mt-4">
+                        <form onSubmit={handleSubmit} className="flex flex-col gap-4 text-left">
+                          <div>
+                            <Label htmlFor="signin-email">Email</Label>
+                            <Input
+                              id="signin-email"
+                              type="email"
+                              autoComplete="email"
+                              required
+                              value={email}
+                              onChange={(event) => setEmail(event.target.value)}
+                              className="mt-1.5"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="signin-password">Password</Label>
+                            <Input
+                              id="signin-password"
+                              type="password"
+                              autoComplete="current-password"
+                              required
+                              value={password}
+                              onChange={(event) => setPassword(event.target.value)}
+                              className="mt-1.5"
+                            />
+                            <Link
+                              to="/auth/forgot-password"
+                              className="mt-1.5 inline-block text-xs text-primary hover:underline"
+                            >
+                              Forgot password?
+                            </Link>
+                          </div>
+                          {formError && <p className="text-sm text-destructive">{formError}</p>}
+                          <InteractiveHoverButton
+                            type="submit"
+                            disabled={submitting}
+                            text={submitting ? "Signing in…" : "Sign in"}
+                            className="w-full"
+                          />
+                        </form>
+                      </TabsContent>
+
+                      <TabsContent value="signup" className="mt-4">
+                        <form onSubmit={handleSubmit} className="flex flex-col gap-4 text-left">
+                          <div>
+                            <Label htmlFor="signup-email">Email</Label>
+                            <Input
+                              id="signup-email"
+                              type="email"
+                              autoComplete="email"
+                              required
+                              value={email}
+                              onChange={(event) => setEmail(event.target.value)}
+                              className="mt-1.5"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="signup-password">Password</Label>
+                            <Input
+                              id="signup-password"
+                              type="password"
+                              autoComplete="new-password"
+                              required
+                              value={password}
+                              onChange={(event) => setPassword(event.target.value)}
+                              className="mt-1.5"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="signup-confirm-password">Confirm password</Label>
+                            <Input
+                              id="signup-confirm-password"
+                              type="password"
+                              autoComplete="new-password"
+                              required
+                              value={confirmPassword}
+                              onChange={(event) => setConfirmPassword(event.target.value)}
+                              className="mt-1.5"
+                            />
+                          </div>
+                          {formError && <p className="text-sm text-destructive">{formError}</p>}
+                          <InteractiveHoverButton
+                            type="submit"
+                            disabled={submitting}
+                            text={submitting ? "Creating account…" : "Create account"}
+                            className="w-full"
+                          />
+                        </form>
+                      </TabsContent>
+                    </Tabs>
+
+                    <div className="mt-6 flex items-center gap-3">
+                      <div className="h-px flex-1 bg-border" />
+                      <span className="text-xs text-muted-foreground">or</span>
+                      <div className="h-px flex-1 bg-border" />
+                    </div>
+
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="mt-6 w-full"
+                      onClick={() => signInWithGoogle()}
+                    >
+                      <GoogleIcon />
+                      Continue with Google
+                    </Button>
+                  </>
+                )}
               </div>
-            ) : (
-              <>
-                <Tabs
-                  value={mode}
-                  onValueChange={(value) => {
-                    setMode(value as "signin" | "signup")
-                    setFormError(null)
-                  }}
-                >
-                  <TabsList className="w-full">
-                    <TabsTrigger value="signin">Sign in</TabsTrigger>
-                    <TabsTrigger value="signup">Create account</TabsTrigger>
-                  </TabsList>
-
-                  <TabsContent value="signin" className="mt-4">
-                    <form onSubmit={handleSubmit} className="flex flex-col gap-4 text-left">
-                      <div>
-                        <Label htmlFor="signin-email">Email</Label>
-                        <Input
-                          id="signin-email"
-                          type="email"
-                          autoComplete="email"
-                          required
-                          value={email}
-                          onChange={(event) => setEmail(event.target.value)}
-                          className="mt-1.5"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="signin-password">Password</Label>
-                        <Input
-                          id="signin-password"
-                          type="password"
-                          autoComplete="current-password"
-                          required
-                          value={password}
-                          onChange={(event) => setPassword(event.target.value)}
-                          className="mt-1.5"
-                        />
-                        <Link
-                          to="/auth/forgot-password"
-                          className="mt-1.5 inline-block text-xs text-primary hover:underline"
-                        >
-                          Forgot password?
-                        </Link>
-                      </div>
-                      {formError && <p className="text-sm text-destructive">{formError}</p>}
-                      <InteractiveHoverButton
-                        type="submit"
-                        disabled={submitting}
-                        text={submitting ? "Signing in…" : "Sign in"}
-                        className="w-full"
-                      />
-                    </form>
-                  </TabsContent>
-
-                  <TabsContent value="signup" className="mt-4">
-                    <form onSubmit={handleSubmit} className="flex flex-col gap-4 text-left">
-                      <div>
-                        <Label htmlFor="signup-email">Email</Label>
-                        <Input
-                          id="signup-email"
-                          type="email"
-                          autoComplete="email"
-                          required
-                          value={email}
-                          onChange={(event) => setEmail(event.target.value)}
-                          className="mt-1.5"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="signup-password">Password</Label>
-                        <Input
-                          id="signup-password"
-                          type="password"
-                          autoComplete="new-password"
-                          required
-                          value={password}
-                          onChange={(event) => setPassword(event.target.value)}
-                          className="mt-1.5"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="signup-confirm-password">Confirm password</Label>
-                        <Input
-                          id="signup-confirm-password"
-                          type="password"
-                          autoComplete="new-password"
-                          required
-                          value={confirmPassword}
-                          onChange={(event) => setConfirmPassword(event.target.value)}
-                          className="mt-1.5"
-                        />
-                      </div>
-                      {formError && <p className="text-sm text-destructive">{formError}</p>}
-                      <InteractiveHoverButton
-                        type="submit"
-                        disabled={submitting}
-                        text={submitting ? "Creating account…" : "Create account"}
-                        className="w-full"
-                      />
-                    </form>
-                  </TabsContent>
-                </Tabs>
-
-                <div className="mt-6 flex items-center gap-3">
-                  <div className="h-px flex-1 bg-border" />
-                  <span className="text-xs text-muted-foreground">or</span>
-                  <div className="h-px flex-1 bg-border" />
-                </div>
-
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="mt-6 w-full"
-                  onClick={() => signInWithGoogle()}
-                >
-                  <GoogleIcon />
-                  Continue with Google
-                </Button>
-              </>
-            )}
+            </div>
           </div>
         </div>
       </div>
