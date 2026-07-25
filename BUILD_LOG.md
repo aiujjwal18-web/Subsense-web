@@ -28,6 +28,23 @@ Two things keep this current automatically:
 
 ---
 
+## 2026-07-25 — Login page: intensified glass card + InteractiveHoverButton primary CTA
+
+**Prompt:**
+Two follow-up changes to `AuthPage.tsx`: (1) intensify the sign-in card's glassmorphism — lower `bg-card` opacity so the sparkles genuinely show through (try `/45`–`/55`), stronger blur (`backdrop-blur-xl`/`2xl`), a faint light top-edge highlight on top of the existing border, while keeping inputs/labels/tabs legible (adjust rather than revert if contrast suffers); don't touch ForgotPasswordPage/ResetPasswordPage this pass. (2) add a new `InteractiveHoverButton` component (given reference implementation, `lucide-react`'s `ArrowRight` + existing `cn`, plain Tailwind transitions — no `motion`) to replace only the primary Sign in/Create account submit button, `w-full`, `disabled={submitting}` with the existing loading-label pattern, hover animation suppressed while disabled; leave the Google button as the existing outline `Button`. Verify visually (card transparency, legibility, button hover states, Google button unchanged, full existing auth flow with zero regressions), then commit. Told explicitly not to ask before proceeding.
+
+**What was done:**
+- `src/components/ui/interactive-hover-button.tsx` (new): built from the given reference implementation, with two real fixes applied rather than pasted as-is — the reference snippet had a syntax error (`React.forwardRef` missing its `<...>` type arguments entirely), and had no disabled-state handling at all despite the task requiring the hover animation to be suppressed while `submitting`. Fixed the generic syntax, and added `disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50` to the button's own class list — since the slide/grow effects are all driven by `group-hover:`, blocking pointer events on `:disabled` is sufficient on its own to suppress them (no extra conditional rendering needed). Matched this codebase's existing convention (`import * as React from "react"`, no semicolons) rather than the reference's own style.
+- `AuthPage.tsx`: card classes changed from `bg-card/85 ... backdrop-blur-md` to `bg-card/50 ... backdrop-blur-xl`, plus `border-t-white/10` layered on top of the existing `border-border` (Tailwind lets a more specific per-side border-color utility override just that side, so left/right/bottom stay `border-border` and only the top edge gets the light "glass pane" highlight) — used the task's own suggested values directly rather than picking new ones. Replaced both submit buttons (`Sign in` / `Create account`) with `InteractiveHoverButton`, passing the same `submitting ? "…ing…" : "..."` label text through its `text` prop and `disabled={submitting}` through to the underlying `<button>`. Google button untouched — still the plain outline shadcn `Button`.
+
+**Verification:**
+- `npm run build` / `npm run lint`: clean, same 4 pre-existing lint errors, no new ones.
+- Manual smoke test (headless Chromium, 1440×900): read the card's computed `background-color`/`backdrop-filter` directly — confirmed `/0.5` alpha and `blur(24px)` (the actual resolved value of `backdrop-blur-xl`) are both applied. A close-up screenshot of just the card shows a genuinely translucent, frosted surface (a soft blurred glow from a star behind the password field is visible through it, plus the faint top-edge highlight line), not a re-skinned opaque card. Spot-checked legibility instead of assuming it: `label` color resolves to solid white, the active tab's background resolves to a fully opaque `#0F172A` (unaffected by the card's own alpha since it's a separate element with its own explicit background) — text stays crisp against the lighter card in both the full-page and close-up screenshots. `InteractiveHoverButton`: confirmed the label's opacity is `1` at rest and `0` after a real `:hover` (300ms transition settled), with the arrow `<svg>` present in the DOM; before/after screenshots show the expected slide-and-grow (small dot + centered label → full-width blue pill with label+arrow). Confirmed the Google button is still a real `<button>` element, visually and structurally untouched. Re-ran the complete existing auth-flow regression suite through the new UI: bad-password sign-in error, signup check-email state, the back-to-sign-in link, forgot-password confirmation, and the reset-password page all still work with zero console errors.
+
+**Commit:** (see next entry — logged automatically by the post-commit hook)
+
+---
+
 ## 2026-07-25 — Kinetic text follow-ups: hover replay, word-stagger tagline, alignment, contrast
 
 **Prompt:**
@@ -321,3 +338,5 @@ Implement Phase 2 (Authentication and Profile) for SubSense per 16_Implementatio
 **Commit logged:** `e4d04e0` — "Log commit trailer for 9eb6cd3 (login page redesign)" (2026-07-25 12:07) — 1 file changed, 2 insertions(+)
 
 **Commit logged:** `502c9a7` — "Kinetic text: hover replay, word-stagger tagline, alignment, contrast" (2026-07-25 12:56) — 3 files changed, 72 insertions(+), 23 deletions(-)
+
+**Commit logged:** `e3fcb84` — "Log commit trailer for 502c9a7 (kinetic text follow-ups)" (2026-07-25 12:56) — 1 file changed, 2 insertions(+)

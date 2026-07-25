@@ -5,6 +5,7 @@ import { KineticText } from "@/components/brand/KineticText"
 import { LogoIcon } from "@/components/brand/LogoIcon"
 import { SparklesCore } from "@/components/ui/sparkles"
 import { Button } from "@/components/ui/button"
+import { InteractiveHoverButton } from "@/components/ui/interactive-hover-button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -105,7 +106,7 @@ export function AuthPage() {
 
         {/* Sign-in card — offset right, with real breathing room from the edge */}
         <div className="w-full max-w-sm shrink-0 lg:mr-8 xl:mr-16">
-          <div className="rounded-lg border border-border bg-card/85 p-8 text-center shadow-2xl shadow-black/40 backdrop-blur-md">
+          <div className="rounded-lg border border-border border-t-white/10 bg-card/50 p-8 text-center shadow-2xl shadow-black/40 backdrop-blur-xl">
             {checkEmail ? (
               <div>
                 <p className="text-sm text-muted-foreground">
@@ -172,9 +173,12 @@ export function AuthPage() {
                         </Link>
                       </div>
                       {formError && <p className="text-sm text-destructive">{formError}</p>}
-                      <Button type="submit" disabled={submitting} className="w-full">
-                        {submitting ? "Signing in…" : "Sign in"}
-                      </Button>
+                      <InteractiveHoverButton
+                        type="submit"
+                        disabled={submitting}
+                        text={submitting ? "Signing in…" : "Sign in"}
+                        className="w-full"
+                      />
                     </form>
                   </TabsContent>
 
@@ -217,9 +221,12 @@ export function AuthPage() {
                         />
                       </div>
                       {formError && <p className="text-sm text-destructive">{formError}</p>}
-                      <Button type="submit" disabled={submitting} className="w-full">
-                        {submitting ? "Creating account…" : "Create account"}
-                      </Button>
+                      <InteractiveHoverButton
+                        type="submit"
+                        disabled={submitting}
+                        text={submitting ? "Creating account…" : "Create account"}
+                        className="w-full"
+                      />
                     </form>
                   </TabsContent>
                 </Tabs>
