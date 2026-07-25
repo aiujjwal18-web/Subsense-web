@@ -340,3 +340,5 @@ Implement Phase 2 (Authentication and Profile) for SubSense per 16_Implementatio
 **Commit logged:** `502c9a7` — "Kinetic text: hover replay, word-stagger tagline, alignment, contrast" (2026-07-25 12:56) — 3 files changed, 72 insertions(+), 23 deletions(-)
 
 **Commit logged:** `e3fcb84` — "Log commit trailer for 502c9a7 (kinetic text follow-ups)" (2026-07-25 12:56) — 1 file changed, 2 insertions(+)
+
+**Commit logged:** `ddb8c24` — "Login page: intensified glass card + InteractiveHoverButton primary CTA" (2026-07-25 14:10) — 3 files changed, 69 insertions(+), 7 deletions(-)
