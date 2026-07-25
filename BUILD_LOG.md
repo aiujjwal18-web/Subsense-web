@@ -413,3 +413,5 @@ Implement Phase 2 (Authentication and Profile) for SubSense per 16_Implementatio
 **Commit logged:** `2d28c12` — "Login page: input placeholders, password toggle, separated pill tabs, deeper glass" (2026-07-25 15:03) — 2 files changed, 119 insertions(+), 20 deletions(-)
 
 **Commit logged:** `2971661` — "Log commit trailer for 2d28c12 (input refinements)" (2026-07-25 15:03) — 1 file changed, 2 insertions(+)
+
+**Commit logged:** `3c66eb1` — "Login page: actual visible stars through card and logo" (2026-07-25 15:17) — 3 files changed, 64 insertions(+), 27 deletions(-)
