@@ -436,3 +436,5 @@ Implement Phase 2 (Authentication and Profile) for SubSense per 16_Implementatio
 **Commit logged:** `3c66eb1` — "Login page: actual visible stars through card and logo" (2026-07-25 15:17) — 3 files changed, 64 insertions(+), 27 deletions(-)
 
 **Commit logged:** `834708b` — "Log commit trailer for 3c66eb1 (visible stars fix)" (2026-07-25 15:17) — 1 file changed, 2 insertions(+)
+
+**Commit logged:** `c20d3a2` — "Login page: push transparency until stars are unmistakable at normal scale" (2026-07-25 15:33) — 4 files changed, 63 insertions(+), 11 deletions(-)
