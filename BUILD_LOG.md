@@ -28,6 +28,24 @@ Two things keep this current automatically:
 
 ---
 
+## 2026-07-25 — Fix: non-uniform star density band from the two-layer sparkles approach
+
+**Prompt:**
+The prior pass's second, denser `SparklesCore` layer (added behind the hero+card row to boost visibility there) created a visible horizontal density band across the middle of the page — dense/bright in that row, noticeably sparser above and below. (1) Remove the second layer entirely — the two-layer approach is the direct cause. (2) Tune the single ambient layer's density/size/opacity to a moderate, uniform level instead, toned down from the "overpowering" boosted level, same everywhere. (3) If a single uniform layer genuinely can't read through the transparent card/logo at a tasteful density, that's a signal the card/logo alpha may need to come back up slightly — flag it rather than reintroducing a second layer. (4) Verify with full-page screenshots at normal scale: even density edge-to-edge and top-to-bottom, stars still visible through card/logo, legibility holds, zero auth-flow regressions, commit.
+
+**What was done:**
+- Removed the `auth-sparkles-boost` `SparklesCore` instance and its wrapping `-inset-x-6 -inset-y-10 -z-10` div entirely from `AuthPage.tsx` — back to exactly one `<canvas>` on the page (confirmed via `page.locator("canvas").count()` === 1).
+- Tuned the single remaining `auth-sparkles` instance up from its original subtle defaults to a moderate level — `particleDensity={110}` (vs. the component's own default `60`, and well below the removed boost layer's `220`), `minSize={0.8} maxSize={1.8}` (vs. default `0.6`/`1.4`), `minOpacity={0.2} maxOpacity={0.9}` (vs. default `0.1`/`0.8`) — one consistent set of values applied to the one full-page layer, rather than two different tunings stitched together.
+- Didn't need to fall back to raising the card/logo alpha (item 3's contingency) — the single tuned layer alone reads clearly enough through both, per the verification below.
+
+**Verification:**
+- `npm run build` / `npm run lint`: clean, same 4 pre-existing lint errors, no new ones.
+- Manual smoke test (headless Chromium, 1440×900, normal 1x scale, full-page, non-zoomed — same honest approach as the previous round, not a zoomed crop): confirmed exactly one `<canvas>` element exists now. Two full-page screenshots taken 1.5s apart show density reading as genuinely even from edge to edge and top to bottom — no visible seam, band, or "dense strip down the middle" the way the two-layer version had. Close-up crops of both the card and the logo tile confirm individual star dots are still clearly visible through each at this single, uniform density. Re-ran the complete auth-flow regression (bad-password error, signup check-email, back-to-sign-in, the password show/hide toggle, forgot-password confirmation, reset-password page) — all still pass, zero unexpected console errors.
+
+**Commit:** (see next entry — logged automatically by the post-commit hook)
+
+---
+
 ## 2026-07-25 — Login page: push transparency until stars are unmistakable at normal scale
 
 **Prompt:**
@@ -438,3 +456,5 @@ Implement Phase 2 (Authentication and Profile) for SubSense per 16_Implementatio
 **Commit logged:** `834708b` — "Log commit trailer for 3c66eb1 (visible stars fix)" (2026-07-25 15:17) — 1 file changed, 2 insertions(+)
 
 **Commit logged:** `c20d3a2` — "Login page: push transparency until stars are unmistakable at normal scale" (2026-07-25 15:33) — 4 files changed, 63 insertions(+), 11 deletions(-)
+
+**Commit logged:** `c84e361` — "Log commit trailer for c20d3a2 (transparency push)" (2026-07-25 15:33) — 1 file changed, 2 insertions(+)

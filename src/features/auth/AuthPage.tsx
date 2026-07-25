@@ -144,31 +144,25 @@ export function AuthPage() {
   return (
     <div className="relative flex min-h-screen items-center overflow-hidden bg-background px-6 py-16 sm:px-10 lg:px-16 xl:px-20">
       <div className="pointer-events-none absolute inset-0">
-        <SparklesCore id="auth-sparkles" className="h-full w-full" />
+        {/* Single uniform layer across the whole page — a prior pass added a
+            second, denser instance layered specifically behind the hero+card
+            row to boost visibility there, but two differently-tuned layers
+            created a visible density seam/band across the middle of the
+            page. One layer, tuned moderately brighter/denser than the
+            original subtle default, reads evenly everywhere and still shows
+            through the now-much-more-transparent card and logo. */}
+        <SparklesCore
+          id="auth-sparkles"
+          className="h-full w-full"
+          particleDensity={110}
+          minSize={0.8}
+          maxSize={1.8}
+          minOpacity={0.2}
+          maxOpacity={0.9}
+        />
       </div>
 
       <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col items-center gap-16 lg:flex-row lg:items-center lg:justify-between">
-        {/* Denser, brighter sparkles specifically behind the hero+card
-            content, layered on top of the ambient full-page field above —
-            that one's tuned for a subtle page-wide backdrop and is simply
-            too sparse in any single card-sized region to read as "stars"
-            once seen through much-more-transparent glass. -z-10 (like the
-            corner glow below) keeps this behind the hero/card content
-            regardless of DOM order, without needing to touch their own
-            positioning. */}
-        <div aria-hidden="true" className="pointer-events-none absolute -inset-x-6 -inset-y-10 -z-10">
-          <SparklesCore
-            id="auth-sparkles-boost"
-            className="h-full w-full"
-            particleDensity={220}
-            minSize={1}
-            maxSize={2.6}
-            speed={0.6}
-            minOpacity={0.4}
-            maxOpacity={1}
-          />
-        </div>
-
         {/* Hero — standalone brand messaging, not a card header */}
         <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
           <div className="flex items-center gap-4">
