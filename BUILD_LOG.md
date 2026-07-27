@@ -581,3 +581,7 @@ Implement Phase 2 (Authentication and Profile) for SubSense per 16_Implementatio
 **Commit logged:** `5133284` — "Log commit trailer for 81cb861 (DEC-059 + reskin + follow-up fixes)" (2026-07-27 20:57) — 1 file changed, 2 insertions(+)
 
 **Commit logged:** `202a4f9` — "CLAUDE.md: document skill discipline, DEC-059 rule, and DEC-057 brand system reference" (2026-07-27 21:07) — 1 file changed, 129 insertions(+), 34 deletions(-)
+
+**Commit logged:** `1d178db` — "Log commit trailer for 202a4f9 (CLAUDE.md skill discipline doc)" (2026-07-27 21:07) — 1 file changed, 4 insertions(+)
+
+**Commit logged:** `a5afa0f` — "Ignore .cursor/skills/ (local tool artifacts, matching the existing .claude/ rule)" (2026-07-27 21:08) — 1 file changed, 1 insertion(+)
