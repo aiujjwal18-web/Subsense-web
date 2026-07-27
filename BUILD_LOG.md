@@ -575,3 +575,5 @@ Implement Phase 2 (Authentication and Profile) for SubSense per 16_Implementatio
 **Commit logged:** `77d3dc6` — "Typewriter effect for KineticText; tagline moves under the wordmark" (2026-07-25 17:26) — 3 files changed, 222 insertions(+), 15 deletions(-)
 
 **Commit logged:** `360ff14` — "Log commit trailer for 77d3dc6 (typewriter effect)" (2026-07-25 17:26) — 1 file changed, 2 insertions(+)
+
+**Commit logged:** `81cb861` — "DEC-059 category icons + DEC-057/058 brand-kit reskin + follow-up fixes" (2026-07-27 20:57) — 22 files changed, 623 insertions(+), 176 deletions(-)
