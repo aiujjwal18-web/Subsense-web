@@ -577,3 +577,7 @@ Implement Phase 2 (Authentication and Profile) for SubSense per 16_Implementatio
 **Commit logged:** `360ff14` — "Log commit trailer for 77d3dc6 (typewriter effect)" (2026-07-25 17:26) — 1 file changed, 2 insertions(+)
 
 **Commit logged:** `81cb861` — "DEC-059 category icons + DEC-057/058 brand-kit reskin + follow-up fixes" (2026-07-27 20:57) — 22 files changed, 623 insertions(+), 176 deletions(-)
+
+**Commit logged:** `5133284` — "Log commit trailer for 81cb861 (DEC-059 + reskin + follow-up fixes)" (2026-07-27 20:57) — 1 file changed, 2 insertions(+)
+
+**Commit logged:** `202a4f9` — "CLAUDE.md: document skill discipline, DEC-059 rule, and DEC-057 brand system reference" (2026-07-27 21:07) — 1 file changed, 129 insertions(+), 34 deletions(-)
