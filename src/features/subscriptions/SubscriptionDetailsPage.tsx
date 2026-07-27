@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react"
-import { CreditCard, Pencil } from "lucide-react"
+import { Pencil } from "lucide-react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { CategoryIcon } from "@/components/subscriptions/CategoryIcon"
 import {
   Dialog,
   DialogClose,
@@ -32,17 +33,23 @@ import {
   SUBSCRIPTION_SELECT_COLUMNS,
   computeRenewalUrgency,
   formatMoney,
+  getCategoryName,
   getDisplayName,
-  getLogoUrl,
   type BillingFrequency,
   type Currency,
   type PaymentMethod,
+  type RenewalUrgency,
   type SubscriptionRow,
 } from "@/features/subscriptions/subscription-utils"
 
 type LoadState = "loading" | "notFound" | "error" | "ready"
 
-const URGENCY_LABEL = { normal: "Normal", upcoming: "Upcoming", critical: "Critical" } as const
+const URGENCY_LABEL: Record<RenewalUrgency, string> = {
+  normal: "Normal",
+  upcoming: "Upcoming",
+  critical: "Critical",
+  overdue: "Overdue",
+}
 
 export function SubscriptionDetailsPage() {
   const { id } = useParams<{ id: string }>()
@@ -208,7 +215,7 @@ function SubscriptionDetailsContent({ id }: { id: string }) {
   if (!row) return null
 
   const displayName = getDisplayName(row)
-  const logoUrl = getLogoUrl(row)
+  const category = getCategoryName(row)
   const urgency = computeRenewalUrgency(row.next_renewal_date)
   const isArchived = row.lifecycle_status === "archived"
 
@@ -221,13 +228,7 @@ function SubscriptionDetailsContent({ id }: { id: string }) {
 
         <div className="mt-4 flex items-start justify-between gap-4">
           <div className="flex items-center gap-3">
-            {logoUrl ? (
-              <img src={logoUrl} alt="" className="size-12 shrink-0 rounded-full bg-muted object-contain ring-1 ring-border" />
-            ) : (
-              <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-muted ring-1 ring-border">
-                <CreditCard className="size-6 text-muted-foreground" />
-              </div>
-            )}
+            <CategoryIcon category={category} className="size-12" iconClassName="size-6" />
             <div>
               <h1 className="font-heading text-2xl font-semibold text-foreground">{displayName}</h1>
               <p className="mt-0.5 text-sm text-muted-foreground">

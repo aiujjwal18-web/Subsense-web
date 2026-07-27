@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react"
-import { CreditCard } from "lucide-react"
+import { useMemo } from "react"
 
 import { Badge } from "@/components/ui/badge"
+import { CategoryIcon } from "@/components/subscriptions/CategoryIcon"
+import { GlowingEffect } from "@/components/subscriptions/GlowingEffect"
 import { RenewalUrgencyBadge } from "@/components/subscriptions/RenewalUrgencyBadge"
 import { cn } from "@/lib/utils"
 import {
@@ -17,7 +18,7 @@ export type { BillingFrequency, LifecycleStatus, RenewalUrgency }
 
 export interface SubscriptionCardProps {
   name: string
-  logoUrl?: string
+  category?: string
   cost: number
   currency: Currency
   billingFrequency: BillingFrequency
@@ -56,7 +57,7 @@ const LIFECYCLE_COLOR: Record<LifecycleStatus, StateColor> = {
 
 export function SubscriptionCard({
   name,
-  logoUrl,
+  category,
   cost,
   currency,
   billingFrequency,
@@ -101,9 +102,6 @@ export function SubscriptionCard({
     else console.log("open subscription details")
   }
 
-  const [logoFailed, setLogoFailed] = useState(false)
-  const showLogo = Boolean(logoUrl) && !logoFailed
-
   return (
     <div
       role="button"
@@ -117,24 +115,18 @@ export function SubscriptionCard({
         }
       }}
       className={cn(
-        "flex cursor-pointer flex-col gap-4 rounded-lg border border-border bg-card p-5 outline-none transition-colors duration-[120ms] ease-out hover:border-ring hover:bg-popover focus-visible:border-ring focus-visible:bg-popover",
+        "relative flex cursor-pointer flex-col gap-4 rounded-lg border border-border bg-card/70 p-5 backdrop-blur-md outline-none transition-colors duration-[120ms] ease-out hover:border-primary focus-visible:border-primary",
         className
       )}
     >
+      {(renewalUrgency === "critical" ||
+        renewalUrgency === "upcoming" ||
+        renewalUrgency === "overdue") && (
+        <GlowingEffect glow disabled={false} spread={30} proximity={48} borderWidth={2} />
+      )}
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
-          {showLogo ? (
-            <img
-              src={logoUrl}
-              alt=""
-              onError={() => setLogoFailed(true)}
-              className="size-10 shrink-0 rounded-full bg-muted object-contain ring-1 ring-border"
-            />
-          ) : (
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted ring-1 ring-border">
-              <CreditCard className="size-5 text-muted-foreground" />
-            </div>
-          )}
+          <CategoryIcon category={category} />
           <div className="min-w-0">
             <p className="truncate font-heading text-sm font-medium text-foreground">
               {name}

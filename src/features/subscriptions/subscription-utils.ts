@@ -7,7 +7,7 @@ export type LifecycleStatus =
   | "paused"
   | "archived"
 
-export type RenewalUrgency = "normal" | "upcoming" | "critical"
+export type RenewalUrgency = "normal" | "upcoming" | "critical" | "overdue"
 
 export type Currency = "INR" | "USD"
 
@@ -15,13 +15,15 @@ export type PaymentMethod = "upi_autopay" | "card_emandate" | "app_store" | "man
 
 export interface CatalogRef {
   name: string
-  logo_url: string | null
+  category: { name: string } | null
 }
 
 // Shared column list for public.subscriptions reads — used by both the list and
 // details pages so the two never drift out of sync.
+// Per DEC-059, logo_url is deprecated and never read here — category is fetched
+// instead, to drive the fixed generic category icon (CategoryIcon).
 export const SUBSCRIPTION_SELECT_COLUMNS =
-  "id, catalog_id, custom_name, cost, currency, billing_frequency, custom_interval_days, next_renewal_date, payment_method, payment_reference_note, lifecycle_status, monthly_equivalent, annual_equivalent, archived_at, created_at, subscription_catalog(name, logo_url)"
+  "id, catalog_id, custom_name, cost, currency, billing_frequency, custom_interval_days, next_renewal_date, payment_method, payment_reference_note, lifecycle_status, monthly_equivalent, annual_equivalent, archived_at, created_at, subscription_catalog(name, category:subscription_categories(name))"
 
 export interface SubscriptionRow {
   id: string
@@ -73,8 +75,8 @@ export function getDisplayName(row: Pick<SubscriptionRow, "custom_name" | "subsc
   return row.subscription_catalog?.name ?? row.custom_name ?? "Untitled subscription"
 }
 
-export function getLogoUrl(row: Pick<SubscriptionRow, "subscription_catalog">): string | undefined {
-  return row.subscription_catalog?.logo_url ?? undefined
+export function getCategoryName(row: Pick<SubscriptionRow, "subscription_catalog">): string | undefined {
+  return row.subscription_catalog?.category?.name ?? undefined
 }
 
 function parseDateOnly(dateStr: string): Date {
@@ -97,6 +99,7 @@ export function daysUntil(dateStr: string): number {
 // reasonable default per-phase-4 guidance, pending an official doc 10 threshold.
 export function computeRenewalUrgency(nextRenewalDate: string): RenewalUrgency {
   const days = daysUntil(nextRenewalDate)
+  if (days < 0) return "overdue"
   if (days <= 2) return "critical"
   if (days <= 7) return "upcoming"
   return "normal"

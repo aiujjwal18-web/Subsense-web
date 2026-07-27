@@ -54,7 +54,7 @@ export function Header({ onOpenMobileSidebar }: HeaderProps) {
       <div className="ml-auto flex items-center gap-1">
         <Button
           type="button"
-          variant="ghost"
+          variant="secondary"
           size="icon"
           disabled
           aria-label="Search (coming soon)"
@@ -73,7 +73,7 @@ export function Header({ onOpenMobileSidebar }: HeaderProps) {
         </Button>
         <Button
           type="button"
-          variant="ghost"
+          variant="secondary"
           size="icon"
           disabled
           aria-label="Notifications (coming soon)"

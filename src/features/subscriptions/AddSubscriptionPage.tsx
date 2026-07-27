@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react"
 import { motion } from "motion/react"
-import { CreditCard, Search, X } from "lucide-react"
+import { Search, X } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 
+import { CategoryIcon } from "@/components/subscriptions/CategoryIcon"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -31,7 +32,7 @@ import {
 interface CatalogResult {
   id: string
   name: string
-  logo_url: string | null
+  category: { name: string } | null
 }
 
 export function AddSubscriptionPage() {
@@ -69,13 +70,13 @@ export function AddSubscriptionPage() {
     const handle = setTimeout(() => {
       supabase
         .from("subscription_catalog")
-        .select("id, name, logo_url")
+        .select("id, name, category:subscription_categories(name)")
         .ilike("name", `%${trimmed}%`)
         .order("name")
         .limit(8)
         .then(({ data, error }) => {
           setSearching(false)
-          if (!error && data) setResults(data)
+          if (!error && data) setResults(data as unknown as CatalogResult[])
         })
     }, 250)
     return () => clearTimeout(handle)
@@ -180,17 +181,11 @@ export function AddSubscriptionPage() {
             <TabsContent value="catalog" className="mt-4">
               {selectedCatalog ? (
                 <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/30 p-3">
-                  {selectedCatalog.logo_url ? (
-                    <img
-                      src={selectedCatalog.logo_url}
-                      alt=""
-                      className="size-9 shrink-0 rounded-full bg-muted object-contain ring-1 ring-border"
-                    />
-                  ) : (
-                    <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted ring-1 ring-border">
-                      <CreditCard className="size-4 text-muted-foreground" />
-                    </div>
-                  )}
+                  <CategoryIcon
+                    category={selectedCatalog.category?.name}
+                    className="size-9"
+                    iconClassName="size-4"
+                  />
                   <span className="flex-1 truncate text-sm font-medium text-foreground">
                     {selectedCatalog.name}
                   </span>
@@ -232,17 +227,11 @@ export function AddSubscriptionPage() {
                             onClick={() => setSelectedCatalog(result)}
                             className="flex w-full items-center gap-3 p-2.5 text-left transition-colors duration-[120ms] ease-out hover:bg-muted"
                           >
-                            {result.logo_url ? (
-                              <img
-                                src={result.logo_url}
-                                alt=""
-                                className="size-8 shrink-0 rounded-full bg-muted object-contain ring-1 ring-border"
-                              />
-                            ) : (
-                              <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted ring-1 ring-border">
-                                <CreditCard className="size-4 text-muted-foreground" />
-                              </div>
-                            )}
+                            <CategoryIcon
+                              category={result.category?.name}
+                              className="size-8"
+                              iconClassName="size-4"
+                            />
                             <span className="truncate text-sm text-foreground">
                               {result.name}
                             </span>

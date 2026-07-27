@@ -4,12 +4,17 @@
 @import "@fontsource/ibm-plex-sans/400.css";
 @import "@fontsource/ibm-plex-sans/500.css";
 @import "@fontsource/ibm-plex-sans/600.css";
+@import "@fontsource/syne/800.css";
+@import "@fontsource/plus-jakarta-sans/700.css";
+@import "@fontsource-variable/inter/wght.css";
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-    --font-heading: 'IBM Plex Sans', sans-serif;
-    --font-sans: 'IBM Plex Sans', sans-serif;
+    --font-display: 'Syne', sans-serif;
+    --font-display-secondary: 'Cabinet Grotesk', sans-serif;
+    --font-heading: 'Plus Jakarta Sans', sans-serif;
+    --font-sans: 'Inter', sans-serif;
     --color-sidebar-ring: var(--sidebar-ring);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -51,81 +56,102 @@
     --radius-2xl: calc(var(--radius) * 1.8);
     --radius-3xl: calc(var(--radius) * 2.2);
     --radius-4xl: calc(var(--radius) * 2.6);
+    --animate-rotating-gradient: rotatingGradient 3s linear infinite;
+    --animate-border-beam: border-beam calc(var(--duration)*1s) infinite linear;
+}
+
+/* Registered so the browser tweens --r smoothly across the keyframe below
+   (an unregistered custom property jumps instead of animating). Backs
+   GradientButton's conic-gradient rotation. */
+@property --r {
+    syntax: '<angle>';
+    inherits: false;
+    initial-value: 0deg;
+}
+
+@keyframes rotatingGradient {
+    to { --r: 360deg; }
+}
+
+/* Backs BorderBeam's offset-path perimeter trace (offset-distance is a
+   natively-animatable CSS property, no @property registration needed). */
+@keyframes border-beam {
+    100% { offset-distance: 100%; }
 }
 
 :root {
-    --background: #0F172A;
+    --background: #050505;
     --foreground: #FFFFFF;
-    --card: #192134;
+    --card: #0B0C0E;
     --card-foreground: #FFFFFF;
-    --popover: #1E293B;
+    --popover: #0B0C0E;
     --popover-foreground: #FFFFFF;
-    --primary: #3B82F6;
-    --primary-foreground: #FFFFFF;
+    --primary: #FFC800;
+    --primary-foreground: #050505;
     --primary-active: #1E40AF;
-    --secondary: #1E40AF;
+    --secondary: transparent;
     --secondary-foreground: #FFFFFF;
-    --muted: #101A34;
-    --muted-foreground: #94A3B8;
-    --muted-foreground-2: #64748B;
-    --accent: rgba(59,130,246,0.15);
-    --accent-foreground: #93C5FD;
+    --muted: #141517;
+    --muted-foreground: #A3A3A3;
+    --muted-foreground-2: #737373;
+    --accent: rgba(255,200,0,0.15);
+    --accent-foreground: #FFC800;
     --destructive: #DC2626;
     --border: rgba(255,255,255,0.08);
     --border-strong: rgba(255,255,255,0.16);
     --input: rgba(255,255,255,0.08);
-    --ring: rgba(59,130,246,0.45);
+    --ring: rgba(255,200,0,0.45);
     --chart-1: #94A3B8;
     --chart-2: #F59E0B;
     --chart-3: #059669;
     --chart-4: #1E40AF;
     --chart-5: #DC2626;
     --radius: 0.5rem;
-    --sidebar: #192134;
+    --sidebar: #0B0C0E;
     --sidebar-foreground: #FFFFFF;
-    --sidebar-primary: #3B82F6;
-    --sidebar-primary-foreground: #FFFFFF;
-    --sidebar-accent: #101A34;
+    --sidebar-primary: #FFC800;
+    --sidebar-primary-foreground: #050505;
+    --sidebar-accent: #141517;
     --sidebar-accent-foreground: #FFFFFF;
     --sidebar-border: rgba(255,255,255,0.08);
-    --sidebar-ring: rgba(59,130,246,0.45);
+    --sidebar-ring: rgba(255,200,0,0.45);
 }
 
 .dark {
-    --background: #0F172A;
+    --background: #050505;
     --foreground: #FFFFFF;
-    --card: #192134;
+    --card: #0B0C0E;
     --card-foreground: #FFFFFF;
-    --popover: #1E293B;
+    --popover: #0B0C0E;
     --popover-foreground: #FFFFFF;
-    --primary: #3B82F6;
-    --primary-foreground: #FFFFFF;
+    --primary: #FFC800;
+    --primary-foreground: #050505;
     --primary-active: #1E40AF;
-    --secondary: #1E40AF;
+    --secondary: transparent;
     --secondary-foreground: #FFFFFF;
-    --muted: #101A34;
-    --muted-foreground: #94A3B8;
-    --muted-foreground-2: #64748B;
-    --accent: rgba(59,130,246,0.15);
-    --accent-foreground: #93C5FD;
+    --muted: #141517;
+    --muted-foreground: #A3A3A3;
+    --muted-foreground-2: #737373;
+    --accent: rgba(255,200,0,0.15);
+    --accent-foreground: #FFC800;
     --destructive: #DC2626;
     --border: rgba(255,255,255,0.08);
     --border-strong: rgba(255,255,255,0.16);
     --input: rgba(255,255,255,0.08);
-    --ring: rgba(59,130,246,0.45);
+    --ring: rgba(255,200,0,0.45);
     --chart-1: #94A3B8;
     --chart-2: #F59E0B;
     --chart-3: #059669;
     --chart-4: #1E40AF;
     --chart-5: #DC2626;
-    --sidebar: #192134;
+    --sidebar: #0B0C0E;
     --sidebar-foreground: #FFFFFF;
-    --sidebar-primary: #3B82F6;
-    --sidebar-primary-foreground: #FFFFFF;
-    --sidebar-accent: #101A34;
+    --sidebar-primary: #FFC800;
+    --sidebar-primary-foreground: #050505;
+    --sidebar-accent: #141517;
     --sidebar-accent-foreground: #FFFFFF;
     --sidebar-border: rgba(255,255,255,0.08);
-    --sidebar-ring: rgba(59,130,246,0.45);
+    --sidebar-ring: rgba(255,200,0,0.45);
 }
 
 @layer base {

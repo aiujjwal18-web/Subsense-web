@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react"
 import { motion } from "motion/react"
-import { CreditCard, Plus } from "lucide-react"
+import { Plus } from "lucide-react"
 import { Link, useNavigate } from "react-router-dom"
 
+import { CategoryIcon } from "@/components/subscriptions/CategoryIcon"
 import { RenewalUrgencyBadge } from "@/components/subscriptions/RenewalUrgencyBadge"
 import { Button } from "@/components/ui/button"
 import { staggerItemMotion } from "@/lib/motion"
@@ -11,8 +12,8 @@ import {
   SUBSCRIPTION_SELECT_COLUMNS,
   computeRenewalUrgency,
   formatMoney,
+  getCategoryName,
   getDisplayName,
-  getLogoUrl,
   type Currency,
   type SubscriptionRow,
 } from "@/features/subscriptions/subscription-utils"
@@ -47,10 +48,8 @@ function SubscriptionListItem({
   onClick: () => void
 }) {
   const name = getDisplayName(row)
-  const logoUrl = getLogoUrl(row)
+  const category = getCategoryName(row)
   const urgency = computeRenewalUrgency(row.next_renewal_date)
-  const [logoFailed, setLogoFailed] = useState(false)
-  const showLogo = Boolean(logoUrl) && !logoFailed
 
   return (
     <button
@@ -58,18 +57,7 @@ function SubscriptionListItem({
       onClick={onClick}
       className="flex w-full items-center gap-3 p-2.5 text-left transition-colors duration-[120ms] ease-out hover:bg-muted"
     >
-      {showLogo ? (
-        <img
-          src={logoUrl}
-          alt=""
-          onError={() => setLogoFailed(true)}
-          className="size-9 shrink-0 rounded-full bg-muted object-contain ring-1 ring-border"
-        />
-      ) : (
-        <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted ring-1 ring-border">
-          <CreditCard className="size-4 text-muted-foreground" />
-        </div>
-      )}
+      <CategoryIcon category={category} className="size-9" iconClassName="size-4" />
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium text-foreground">{name}</p>
         <p className="text-xs text-muted-foreground">

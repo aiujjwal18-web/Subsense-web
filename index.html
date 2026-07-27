@@ -5,6 +5,11 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>subsense-web</title>
+    <!-- Cabinet Grotesk has no self-hostable Fontsource package (confirmed via
+         npm registry 404) — every other font in this project self-hosts via
+         Fontsource, this is the one deliberate exception, per doc 05's own
+         "Fontshare CDN link or self-host" guidance. -->
+    <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400,300&display=swap" />
   </head>
   <body>
     <div id="root"></div>

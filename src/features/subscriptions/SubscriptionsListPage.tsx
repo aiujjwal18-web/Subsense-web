@@ -10,8 +10,8 @@ import { supabase } from "@/lib/supabase"
 import {
   SUBSCRIPTION_SELECT_COLUMNS,
   computeRenewalUrgency,
+  getCategoryName,
   getDisplayName,
-  getLogoUrl,
   type SubscriptionRow,
 } from "@/features/subscriptions/subscription-utils"
 
@@ -99,7 +99,7 @@ export function SubscriptionsListPage() {
               <motion.div key={row.id} {...staggerItemMotion(index)}>
                 <SubscriptionCard
                   name={getDisplayName(row)}
-                  logoUrl={getLogoUrl(row)}
+                  category={getCategoryName(row)}
                   cost={row.cost}
                   currency={row.currency}
                   billingFrequency={row.billing_frequency}

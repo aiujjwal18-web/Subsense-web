@@ -28,6 +28,90 @@ Two things keep this current automatically:
 
 ---
 
+## 2026-07-27 — Reskin follow-ups: stable shell, glow baseline, stray tokens, hover-sidebar, overdue urgency
+
+**Prompt:**
+Five fixes on the just-shipped DEC-057/058 reskin, found by the user reviewing the landed work: (1) `AppLayout`'s `min-h-screen` gives `BorderBeam` and the scroll region an unstable box — switch to a fixed-height shell; (2) `GlowingEffect`'s `--active` only gets set from inside mouse/scroll handlers, so urgent cards show no glow until the cursor happens to be near — give it an ambient baseline; (3) `--muted`/`--sidebar-accent` in `index.css` were missed by the color swap, still old Ledger Dark blue-navy; (4) replace the Sidebar's manual collapse toggle with hover-triggered auto-expand/collapse on desktop, completing doc 05's originally-named "hover-expand" candidate pattern; (5) add a distinct `"overdue"` `RenewalUrgency` state (renewal date in the past) with its own badge label and glow inclusion — state/badge/glow only, explicitly no email/notification wiring (Phase 6 scope).
+
+Used plan mode again given this touches the same shared shell/card/sidebar files from the prior pass — read all 5 current files in full before planning, wrote a file-by-file plan, got explicit sign-off before writing code.
+
+**What was done:**
+- `AppLayout.tsx`: outer shell `min-h-screen` → `h-dvh overflow-hidden` (dynamic viewport height, safer than `h-screen` on mobile browser chrome) — `<main>`'s `overflow-y-auto` is now the one real scroll region, `BorderBeam` gets a fixed box to trace instead of a content-height-driven one.
+- `GlowingEffect.tsx`: `--active`'s floor changed from `"0"` to `"0.5"` in both the initial inline style and the two handler branches that used to hard-zero it (the `inactiveRadius` early return and the `!isActive` case) — mouse proximity still brightens to `"1"`, but a mounted (i.e. already urgency-gated) instance is never fully off.
+- `src/index.css`: `--muted` and `--sidebar-accent` (4 lines, `:root` + `.dark`) repointed from the stray `#101A34` to `#141517` — a neutral near-Surface tint, no blue.
+- `Sidebar.tsx`: rewritten to manage its own `hoverExpanded` state internally (`expanded = hoverExpanded || mobileOpen`, the `|| mobileOpen` clause is what keeps the mobile drawer showing full labels rather than defaulting to permanently icon-only on touch devices with no hover). `onMouseEnter`/`onMouseLeave` on the `motion.aside` drive the same existing 200ms width animation. The manual toggle button and its `PanelLeftOpen`/`PanelLeftClose` imports are gone entirely. `SidebarProps` shrank to just `mobileOpen`/`onCloseMobile`. `AppLayout.tsx` no longer owns `collapsed` state.
+- `subscription-utils.ts`: `RenewalUrgency` gained `"overdue"`; `computeRenewalUrgency` checks `days < 0` first (before the `<= 2` critical check, so a negative day count doesn't get miscategorized as critical) — a renewal due today (`days === 0`) still reads as critical, not overdue.
+- `RenewalUrgencyBadge.tsx`: added `overdue: "Overdue"` to both `Record<RenewalUrgency, string>` maps, reusing Critical's red styling — doc 05's Status System rule is that meaning must not depend on color alone, and the two are already distinguished by label.
+- `SubscriptionDetailsPage.tsx`: its own local, previously-untyped `URGENCY_LABEL` const got the same `"overdue"` entry, and was retyped as `Record<RenewalUrgency, string>` so a future missed case is a compile error instead of a silent `undefined` render.
+- `SubscriptionCard.tsx`: glow gate extended to `critical || upcoming || overdue`.
+- Confirmed `DecisionWorkspacePage.tsx`'s `urgency !== "normal"` review filter already includes `"overdue"` automatically — no change needed there.
+
+**Verification:**
+- `npx tsc -b`: clean — the `Record<RenewalUrgency, string>` typing on both label maps meant this step would have hard-failed on a missed `"overdue"` case.
+- `npx eslint .`: same 4 pre-existing errors, none new.
+- `npm run build`: clean.
+- Headless-Chromium spot-check on `/auth` (temporary `playwright-core` install, removed after — confirmed via `git diff package.json`): identical render to the prior pass, zero console errors — confirms nothing regressed pre-auth.
+- **Not verified this pass**: the actual shell/glow/sidebar/badge behavior all lives behind `ProtectedRoute`, same credential gap as both prior passes this session — flagged again rather than silently skipped.
+
+**Commit:** (see next entry — logged automatically by the post-commit hook)
+
+---
+
+## 2026-07-27 — DEC-057/DEC-058 brand-kit reskin: amber-on-obsidian, four-family type system
+
+**Prompt:**
+DEC-057/DEC-058 brand-kit reskin per `05_Design_System_v1.23.md`. Eight ordered steps: (1) load Syne/Plus Jakarta Sans/Inter/Cabinet Grotesk and wire into Tailwind font tokens, matching however IBM Plex Sans is currently loaded; (2) confirm motion/react-router-dom/lucide-react already installed; (3) confirm flat #050505 background, no dot-grid; (4) fix the gradient pill button reference's missing `rotatingGradient` keyframe; (5) scope the glowing-border card to Subscription Cards in Critical/Upcoming renewal-urgency only; (6) adapt Border Beam (v3→v4 Tailwind syntax, recolor off its defaults, strip its gradient-text demo, mount once on the outer app shell); (7) extend the existing Sidebar with `motion/react`-driven collapse/mobile-drawer animation rather than replacing it with the reference's Next.js/framer-motion version; (8) apply the new tokens to Header → Sidebar → SubscriptionCard → Phase 4 forms. Pre-auth screens (DEC-056) explicitly excluded.
+
+Used `superpowers`/plan mode given the size (8 systems, many shared files): read the frozen design doc plus all 5 external reference-component `.txt` files (found at `Desktop\Components\`, not in the repo) in full, confirmed Tailwind v4 (no config file) and the project's existing self-hosted-Fontsource font-loading pattern via direct research, then wrote a full file-by-file plan and got explicit user sign-off before writing code — including three rounds of user-caught corrections (destructive button's rest/hover/press states were wrong, not "close to spec"; `GlowingEffect`'s gating needed an explicit `critical`/`upcoming` check instead of `!== "normal"` to not silently include a future "overdue" state; destructive hover needed a border-color change too, not just fill).
+
+**What was done:**
+- Fonts: installed `@fontsource/syne` + `@fontsource/plus-jakarta-sans` (Inter's `@fontsource-variable/inter` was already installed, unused); self-hosted imports added to `index.css` + `main.tsx` matching the existing IBM Plex Sans pattern. Cabinet Grotesk has no Fontsource package (confirmed via `npm view`, 404) — loaded via a Fontshare `<link>` in `index.html`, the one deliberate exception to the self-hosted method. New `--font-display`/`--font-display-secondary` tokens added; `--font-heading`/`--font-sans` repointed from IBM Plex Sans to Plus Jakarta Sans/Inter (IBM Plex Sans and Space Grotesk stay installed, unused, per doc 05's explicit instruction).
+- `src/index.css`: full color-token swap in `:root`/`.dark` to the DEC-057 palette (`#050505` page, `#0B0C0E` surface — Surface 1 = Surface 2 now, `#FFC800` primary with `#050505` text, `transparent` secondary, status colors unchanged). Added `@property --r`/`@keyframes rotatingGradient` and `@keyframes border-beam` plus their `--animate-*` theme tokens (Tailwind v4 CSS-based wiring, no `tailwind.config.js` exists).
+- `button.tsx`: `default` hover changed from an opacity fade to an inset dark ring; `secondary` rewritten from a filled to an outline treatment; `destructive` rewritten to a real 3-state rest/hover/press (was missing a press state entirely and had the wrong rest/hover opacities against doc 05, corrected during plan review).
+- New `gradient-button.tsx` — fixed the reference's missing keyframe/gradient, built as a standalone component per doc 05's own note that this candidate isn't adopted into the frozen Button standard; not wired into any screen.
+- New `GlowingEffect.tsx` (subscriptions-scoped) — adapted from the reference, Aceternity demo content stripped, decorative hex recolored to brand amber/white tones, wired into `SubscriptionCard.tsx` gated on an explicit `renewalUrgency === "critical" || renewalUrgency === "upcoming"` check (not `!== "normal"`, to not silently include the reserved future "overdue" state).
+- New `border-beam.tsx` — recolored off its `#ffaa40`/`#9c40ff` defaults to brand `#FFC800`/`#FFFFFF`, mounted exactly once in `AppLayout.tsx`'s outer wrapper, slow/thin (`duration=30`, `borderWidth=1`) per doc 05's "quiet signature, not a focal effect" instruction.
+- `Sidebar.tsx`: extended in place (kept its controlled-prop API, real `NAV_ITEMS`/`NavLink` auth-aware content) — desktop collapse now animates width via `motion.aside` instead of an instant class jump; mobile backdrop wrapped in `AnimatePresence` for a real fade instead of instant show/hide. Deliberately did not add the reference's hover-to-auto-expand behavior (reasoned in the plan as too twitchy/decorative for a financial app) and left the mobile drawer's own slide on its existing CSS transition rather than converting to motion, since converting risked breaking the `lg:` breakpoint override for no visible gain (it already animated at the same 200ms).
+- `SubscriptionCard.tsx`: `bg-card` → `bg-card/70 backdrop-blur-md` (glass-morphism), hover simplified to a border-only amber shift (dropped the old background hover shift, a no-op now that Surface 1 = Surface 2), `relative` added for the `GlowingEffect` overlay.
+- `Header.tsx`: Search/Bell icon buttons switched from `variant="ghost"` to `variant="secondary"` per doc 05's "Icon: same as Secondary" rule.
+- `Logo.tsx`: wordmark span switched from `font-heading` to the new `font-display` (Syne) token, per doc 05's Logo section.
+
+**Verification:**
+- `npx tsc -b`: clean.
+- `npx eslint .`: same 4 pre-existing errors (`badge.tsx`, `button.tsx`, `tabs.tsx`, `AuthContext.tsx` — all pre-existing `react-refresh/only-export-components` warnings, confirmed none are new).
+- `npm run build`: clean; bundle output confirms the new Syne/Plus-Jakarta-Sans/Inter font files are actually included.
+- Headless-Chromium pass (temporary `playwright-core` install, removed afterward — confirmed via `git diff package.json` that only the two real new font deps remain) on `/auth`, the one screen reachable without a login: confirmed via computed style and screenshot that `background-color` is `rgb(5,5,5)` (`#050505`), the "Continue with Google" button now shows a real border (secondary→outline treatment), and the logo/corner-glow/links now render amber — token swap confirmed live, not just declared in CSS. The sparkles/glass card/`KineticText`/`InteractiveHoverButton` DEC-056 structure is untouched, exactly as planned; the token bleed-through onto the shared `Button`/`Input` elements on this screen is expected and was flagged in the plan, not a bug.
+- **Not verified this pass**: Header, Sidebar, SubscriptionCard, and BorderBeam all sit behind Supabase auth (`ProtectedRoute`) and no test credentials were available in this session — same limitation as the earlier DEC-059 pass this session. Did not create a live test account to work around it (would touch production Supabase data without asking first). Flagging explicitly rather than claiming a visual check that didn't happen — worth a manual pass next session with real credentials.
+
+**Commit:** (see next entry — logged automatically by the post-commit hook)
+
+---
+
+## 2026-07-27 — DEC-059: remove real brand logos, render category icons instead
+
+**Prompt:**
+DEC-059 fix — remove all real third-party brand logos, replace with generic category icons. `subscription_catalog.logo_url` held real brand logo URLs (Simple Icons/Wikimedia), flagged as a trademark/IP exposure. Steps: (1) add a category → Lucide icon mapping (Entertainment→Tv, Music→Headphones, Productivity→Briefcase, Education→BookOpen, Utilities→Wrench, AI Tools→Bot, Other→Layers), rendered inline as a component, no image/URL/fetch; (2) grep and replace every `logo_url` read across the app with the category icon, confirm zero remaining reads; (3) confirm subscription names still render in the app's own type tokens, never brand-specific styling; (4) only after 1–3 verified, run `27_SubSense_Catalog_Logo_Removal_v1.0.sql` against live Supabase and verify `still_populated = 0`; (5) sanity-check future/custom catalog entries also fall back to a category icon, never a fetched logo.
+
+**What was done:**
+- New `src/components/subscriptions/CategoryIcon.tsx`: single reusable component + `CATEGORY_ICON_MAP` (the seven category→Lucide-icon pairs from `05_Design_System`'s Icon System / DEC-059 table), rendered inline — no `<img>`, no URL, no network fetch. Falls back to `Layers` (the "Other" icon) for any missing/unrecognized category, which also covers custom (non-catalog) subscriptions that have no category at all.
+- `subscription-utils.ts`: `CatalogRef.logo_url` replaced with `CatalogRef.category: { name: string } | null`; `SUBSCRIPTION_SELECT_COLUMNS` now joins `subscription_catalog(name, category:subscription_categories(name))` instead of `subscription_catalog(name, logo_url)`. `getLogoUrl()` replaced with `getCategoryName()`.
+- `SubscriptionCard.tsx`: `logoUrl` prop replaced with `category`; the `<img>`/`CreditCard`-fallback block and its `logoFailed` state removed entirely, replaced with `<CategoryIcon category={category} />`.
+- `SubscriptionsListPage.tsx`, `SubscriptionDetailsPage.tsx`, `DecisionWorkspacePage.tsx` (`SubscriptionListItem`): swapped `getLogoUrl`/`logoUrl`/image-fallback usage for `getCategoryName`/`<CategoryIcon>` at each of their respective render sizes (12/9/10 depending on call site).
+- `AddSubscriptionPage.tsx`: catalog search query changed from `select("id, name, logo_url")` to `select("id, name, category:subscription_categories(name))")`; both the selected-catalog chip and the search-results list swapped their `<img>`/`CreditCard` fallback for `<CategoryIcon>`. `CatalogResult.logo_url` replaced with `CatalogResult.category`.
+- `27_SubSense_Catalog_Logo_Removal_v1.0.sql` **not run this pass** — only an anon key is available in this environment (`src/lib/.env.local`), and `subscription_catalog`'s RLS write policy is admin/service-role only, so the anon key cannot execute the `UPDATE`. Needs the user to run it directly (Supabase SQL editor, or a service-role key this session doesn't have access to).
+
+**Verification:**
+- Grepped `src/` for `logo_url|logoUrl` after all edits — zero remaining reads outside one explanatory code comment.
+- `npx tsc -b`: clean (one follow-up fix needed — `AddSubscriptionPage.tsx`'s catalog-search `.then()` needed the same `as unknown as CatalogResult[]` cast the rest of the codebase already uses for embedded-select results, since this project's Supabase client has no generated `Database` types to infer embed cardinality from).
+- `npx eslint` on the touched directories: clean.
+- `npm run build`: clean production build, no new warnings.
+- Live browser walkthrough **not done this pass**: every screen that renders these cards sits behind `ProtectedRoute`/Supabase auth, and no test credentials or public demo route were available in this session — flagging explicitly per the project's verification-before-completion rule rather than claiming a visual check that didn't happen.
+- SQL patch **not executed** — see above; still pending, blocked on write credentials this session doesn't have.
+
+**Commit:** (see next entry — logged automatically by the post-commit hook)
+
+---
+
 ## 2026-07-25 — Typewriter effect for KineticText; tagline moves under the wordmark
 
 **Prompt:**
@@ -489,3 +573,5 @@ Implement Phase 2 (Authentication and Profile) for SubSense per 16_Implementatio
 **Commit logged:** `913d329` — "Log commit trailer for e488ca8 (uniform star density fix)" (2026-07-25 15:45) — 1 file changed, 2 insertions(+)
 
 **Commit logged:** `77d3dc6` — "Typewriter effect for KineticText; tagline moves under the wordmark" (2026-07-25 17:26) — 3 files changed, 222 insertions(+), 15 deletions(-)
+
+**Commit logged:** `360ff14` — "Log commit trailer for 77d3dc6 (typewriter effect)" (2026-07-25 17:26) — 1 file changed, 2 insertions(+)
