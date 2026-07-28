@@ -28,6 +28,62 @@ Two things keep this current automatically:
 
 ---
 
+## 2026-07-27 — Restructure app shell: remove Header bar, float logo strip + actions
+
+**Prompt:**
+`Header.tsx`'s full-width `bg-card` bar was found to sit between `BorderBeam`'s top perimeter trace and the viewport wherever it spans Main's width, so the beam was only ever visible over Sidebar's own portion of the top edge. Fix: delete `Header.tsx` as a bar entirely; replace it with a new background-less `TopBar` (mobile hamburger + logo Link only, full width, h-14) sitting above a Sidebar+Main row (not inside either), and a separately-floating `TopBarActions` (Search/Add Subscription/Notifications/avatar menu, `fixed top-4 right-4 z-50`, not sharing a container with the logo strip). Sidebar's own internals (nav items, hover-expand, mobile drawer transform) explicitly not to be touched — only what wraps it changes. No visual/token changes beyond the restructure itself.
+
+Used plan mode (explicitly requested, "same review step as every prior round this session") — read `AppLayout.tsx`/`Header.tsx`/`Sidebar.tsx` first, then wrote a full plan before touching code. Plan review caught two real issues before implementation: (1) `TopBarActions` positioned last in the DOM would've been a tab-order regression — keyboard/screen-reader users would tab through the entire Sidebar nav and Main's content before reaching Search/Add Subscription/the avatar menu, even though `position: fixed` means DOM order doesn't affect where it visually paints; moved to render right after `TopBar` instead. (2) Doc 05's Global Navigation section still describes the old single-Header pattern and needs a documentation update to match — flagged explicitly as a follow-up rather than left to fall off silently.
+
+**What was done:**
+- New `src/components/shell/TopBar.tsx`: hamburger button (`lg:hidden`) + `<Link to="/" aria-label="Home"><LogoIcon /></Link>`, moved verbatim from `Header.tsx`'s first two elements. No `bg-*`/`border-*` classes — that's the entire point of the change.
+- New `src/components/shell/TopBarActions.tsx`: the exact contents of `Header.tsx`'s old `ml-auto` block (Search, Add Subscription, Notifications, avatar `DropdownMenu`) plus the `getInitials` helper, moved verbatim — only the wrapper changed, from `ml-auto flex items-center gap-1` (a flex-row child) to `fixed top-4 right-4 z-50 flex items-center gap-1` (independent of the layout grid).
+- `AppLayout.tsx`: outer container `flex` → `flex flex-col`. Now renders `BorderBeam`, `TopBar`, `TopBarActions` (in that DOM order, per the tab-order fix above), then a new `<div className="flex min-h-0 flex-1">` wrapping `Sidebar` + `<main className="min-w-0 flex-1 overflow-y-auto">` — inverting the outer flex direction is what makes Sidebar now sit fully below the top strip instead of spanning the full height. The Row div's `min-h-0` is load-bearing, not defensive: a `flex-1` item's default `min-height: auto` in a `flex-col` parent would otherwise prevent it shrinking to the remaining space, the classic nested-scroll-pane flexbox gotcha that would let Main's content overflow the outer `overflow-hidden` container instead of scrolling within it.
+- Deleted `src/components/shell/Header.tsx` — confirmed via grep it was referenced only by `AppLayout.tsx` (rewritten) and `BUILD_LOG.md`'s own historical prose, safe to remove outright.
+- `Sidebar.tsx` — zero edits, confirmed untouched per the constraint.
+
+**Verification:**
+- BorderBeam obstruction check (the actual point of this change): grepped the new/edited shell files for `bg-`/`border-` classes — `TopBar`'s only such class is `hover:bg-muted` on the small hamburger button itself, not a full-width bar; the new Row div has no background class at all; the outer container's own `bg-background` sits *behind* `BorderBeam` since `BorderBeam` is its child (children always paint over a parent's own background) — confirmed nothing opaque spans the top edge across Main's width anymore.
+- `npx tsc -b`: clean.
+- `npx eslint .`: same 4 pre-existing errors, none new — confirms no dangling imports left over from deleting `Header.tsx`.
+- `npm run build`: clean.
+- Visual confirmation **not done this pass** — this layout only renders behind `ProtectedRoute`, same auth-credential gap as every round this session, flagged rather than skipped silently.
+- **Follow-up flagged, not done this pass**: `05_Design_System`'s Global Navigation section needs a documentation update to describe the new `TopBar`/`TopBarActions`/`Sidebar`+`Main` structure instead of the retired single-`Header` pattern.
+
+**Commit:** (see next entry — logged automatically by the post-commit hook)
+
+---
+
+# Build Log — Subsense-web
+
+Append-only, most-recent-first traceability log of build steps, the prompts that drove them, and how each step was verified. This lives inside the code repo (not the IIT Capstone governance docs) because it's a record of *implementation activity*, not product/architecture decisions — those still belong in `08_Decision_Log`.
+
+Two things keep this current automatically:
+1. A git `post-commit` hook (`.git/hooks/post-commit`, local-only — not versioned by git itself) appends a one-line entry for every commit: timestamp, hash, message.
+2. `CLAUDE.md` instructs Claude Code to append a full entry here — the prompt it was given, what it built, and how it verified the work — before committing each task, using the template below.
+
+---
+
+## Entry template
+
+```
+## YYYY-MM-DD — <short task title>
+
+**Prompt:**
+<the prompt given to Claude Code, or a faithful summary if very long>
+
+**What was done:**
+- <bullet list of concrete changes / files touched>
+
+**Verification:**
+- <build/lint/test results>
+- <manual smoke test results, if any>
+
+**Commit:** <hash> — "<commit message>"
+```
+
+---
+
 ## 2026-07-27 — Logo asset swap, home link, two-tone wordmark/tagline
 
 **Prompt:**
