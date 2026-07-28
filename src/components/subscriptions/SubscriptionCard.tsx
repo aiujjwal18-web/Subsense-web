@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils"
 import {
   BILLING_FREQUENCY_LABEL,
   LIFECYCLE_LABEL,
+  formatRenewalLabel,
   type BillingFrequency,
   type Currency,
   type LifecycleStatus,
@@ -87,15 +88,11 @@ export function SubscriptionCard({
         : "/custom"
       : FREQUENCY_SUFFIX[billingFrequency]
 
-  const formattedRenewalDate = useMemo(
-    () =>
-      new Date(nextRenewalDate).toLocaleDateString(undefined, {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      }),
-    [nextRenewalDate]
-  )
+  const renewalLabel = useMemo(() => {
+    const dateStr =
+      typeof nextRenewalDate === "string" ? nextRenewalDate : nextRenewalDate.toISOString().slice(0, 10)
+    return formatRenewalLabel(dateStr, renewalUrgency)
+  }, [nextRenewalDate, renewalUrgency])
 
   const handleActivate = () => {
     if (onClick) onClick()
@@ -155,9 +152,7 @@ export function SubscriptionCard({
               {frequencySuffix}
             </span>
           </p>
-          <p className="text-xs text-muted-foreground">
-            Renews {formattedRenewalDate}
-          </p>
+          <p className="text-xs text-muted-foreground">{renewalLabel}</p>
         </div>
         <RenewalUrgencyBadge urgency={renewalUrgency} />
       </div>

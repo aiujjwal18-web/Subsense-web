@@ -105,6 +105,25 @@ export function computeRenewalUrgency(nextRenewalDate: string): RenewalUrgency {
   return "normal"
 }
 
+function formatOverdueLabel(nextRenewalDate: string): string {
+  const days = Math.abs(daysUntil(nextRenewalDate))
+  return `Overdue by ${days} day${days === 1 ? "" : "s"}`
+}
+
+export function formatRenewalLabel(nextRenewalDate: string, urgency: RenewalUrgency): string {
+  if (urgency === "overdue") return formatOverdueLabel(nextRenewalDate)
+  const days = daysUntil(nextRenewalDate)
+  if (days === 0) return "Due today"
+  if (urgency === "critical" || urgency === "upcoming") {
+    return `Renews in ${days} day${days === 1 ? "" : "s"}`
+  }
+  return `Renews ${new Date(nextRenewalDate).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  })}`
+}
+
 /**
  * Client-side estimate only — the DB trigger on public.subscriptions computes the
  * authoritative annual_equivalent/monthly_equivalent server-side on insert/update.

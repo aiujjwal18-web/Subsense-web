@@ -28,6 +28,55 @@ Two things keep this current automatically:
 
 ---
 
+## 2026-07-27 — Consolidate renewal-date display into one shared formatter
+
+**Prompt:**
+Extend last round's overdue-date fix with two more cases: renewal due today (0 days out) should show "Due today," and renewal within 7 days but not due today/overdue (`renewalUrgency` critical or upcoming) should show "Renews in N days" instead of the absolute date; subscriptions more than 7 days out keep the plain date. Since the same four render sites had already drifted out of sync twice this session (once on badge labels, once on date formatting) from branching independently, explicitly asked for a single function in `subscription-utils.ts` — `formatRenewalLabel(nextRenewalDate, urgency)` — that returns the correct string for every case, with all four sites calling it instead of branching locally.
+
+**What was done:**
+- `subscription-utils.ts`: added `formatRenewalLabel(nextRenewalDate: string, urgency: RenewalUrgency): string` — overdue delegates to the existing overdue formatter, `days === 0` (checked before the critical/upcoming branch, since day-0 is itself `urgency === "critical"`) returns "Due today," critical/upcoming returns "Renews in N day(s)," everything else returns the plain formatted date. Un-exported the previous round's `formatOverdueLabel` (dropped `export`) since it's now purely an internal helper `formatRenewalLabel` calls — no component imports it directly anymore.
+- Deliberately unified the "normal" (>7 days) date format across all three sites into one canonical `"Renews {Mon D, YYYY}"` string, rather than threading a per-site format string through the new function to preserve three previously-inconsistent renderings — `SubscriptionDetailsPage.tsx`'s copy changes from "Next renewal: Jul 25, 2026" to "Renews Jul 25, 2026", and `DecisionWorkspacePage.tsx`'s list rows gain a year they didn't show before. Both flagged in the plan as a deliberate, minor consistency fix, not an accidental side effect — the whole point of this round was to stop these sites disagreeing.
+- `SubscriptionCard.tsx`: collapsed the two previous memos (`formattedRenewalDate` and last round's `overdueLabel`) into one `renewalLabel` memo calling `formatRenewalLabel`, keeping the same `string | Date` prop normalization as before. Render line simplified from a ternary to a direct `{renewalLabel}`.
+- `SubscriptionDetailsPage.tsx` and `DecisionWorkspacePage.tsx` (`SubscriptionListItem`, covering both the Upcoming Renewals and Recommended Reviews lists): both ternaries replaced with a single `formatRenewalLabel(row.next_renewal_date, urgency)` call.
+- `SubscriptionsListPage.tsx`: re-confirmed via grep — still no local date-rendering code, fully delegates to `SubscriptionCard`. No change.
+
+**Verification:**
+- `npx tsc -b`: clean.
+- `npx eslint .`: same 4 pre-existing errors, none new.
+- `npm run build`: clean.
+- Grepped for `formatOverdueLabel` after un-exporting it — confirmed only its own definition and the one internal call site inside `formatRenewalLabel` remain; no stray imports left dangling in any component.
+- Hand-checked the logic against all four cases (no test runner in this project): days=-2 → "Overdue by 2 days"; days=0 → "Due today"; days=1 → "Renews in 1 day" (singular); days=2 (critical) and days=5 (upcoming) → "Renews in N days"; days=14 (normal) → "Renews {formatted date}".
+- Manual visual check **not done this pass** — same auth-credential gap as every prior round this session, flagged rather than skipped silently.
+
+**Commit:** (see next entry — logged automatically by the post-commit hook)
+
+---
+
+## 2026-07-27 — Fix overdue subscription date display
+
+**Prompt:**
+The "Overdue" badge (added last round) correctly appears for a past-due subscription, but the date line underneath still showed the raw past date (e.g. "Renews 25 Jul 2026") instead of communicating elapsed time. Fix: wherever a card/list row renders the renewal-date line, add a branch for `renewalUrgency === "overdue"` showing elapsed days instead, computed via the existing `daysUntil()` helper (already returns negative for past dates, take the absolute value) — "Overdue by {n} day"/"days" singular/plural. Explicitly called out that this line is rendered independently in multiple files, not from one shared component (`SubscriptionCard.tsx`, `SubscriptionsListPage.tsx`, `SubscriptionDetailsPage.tsx`, `DecisionWorkspacePage.tsx`'s Upcoming Renewals and Recommended Reviews lists) — check and fix each independently, the same fragmentation that caused `SubscriptionDetailsPage`'s separate urgency-label map to get missed in the previous round.
+
+Used plan mode given the multi-file scope; grepped `src/` for `Renews|formattedRenewalDate|toLocaleDateString` first to find every render site before planning, rather than assuming the four named files each needed a fix.
+
+**What was done:**
+- `subscription-utils.ts`: added `formatOverdueLabel(nextRenewalDate: string): string`, reusing `daysUntil()` + `Math.abs()`, returning `"Overdue by N day"`/`"Overdue by N days"`. Centralized here (alongside `getDisplayName`/`getCategoryName`/`formatMoney`, which already serve the same cross-file-shared-formatting role) instead of duplicating the singular/plural logic three times.
+- `SubscriptionCard.tsx`: added a memoized `overdueLabel` (parallel to the existing `formattedRenewalDate` memo) that normalizes the `string | Date` `nextRenewalDate` prop to a date string before calling `formatOverdueLabel`; render branches on `renewalUrgency === "overdue"`.
+- `SubscriptionDetailsPage.tsx`: "Next renewal: ..." line now branches on the already-in-scope `urgency` variable, calling `formatOverdueLabel(row.next_renewal_date)` when overdue.
+- `DecisionWorkspacePage.tsx`: same branch added inside the local `SubscriptionListItem` component — since both "Upcoming Renewals" and "Recommended Reviews" call this one shared component, a single fix covers both lists the prompt named separately.
+- `SubscriptionsListPage.tsx`: **checked, no change needed** — confirmed via read that it has no local date-rendering code at all; it delegates entirely to `<SubscriptionCard>`, so the `SubscriptionCard.tsx` fix covers it automatically.
+
+**Verification:**
+- `npx tsc -b`: clean.
+- `npx eslint .`: same 4 pre-existing errors, none new.
+- `npm run build`: clean.
+- Reasoned through the date math by hand (no test runner in this project): a date 3 days past gives `daysUntil` = -3, `Math.abs` = 3 → "Overdue by 3 days"; 1 day past → "Overdue by 1 day" (correct singular).
+- Manual visual check **not done this pass** — same auth-credential gap as every prior round this session, flagged rather than skipped silently.
+
+**Commit:** (see next entry — logged automatically by the post-commit hook)
+
+---
+
 ## 2026-07-27 — Reskin follow-ups: stable shell, glow baseline, stray tokens, hover-sidebar, overdue urgency
 
 **Prompt:**
@@ -585,3 +634,5 @@ Implement Phase 2 (Authentication and Profile) for SubSense per 16_Implementatio
 **Commit logged:** `1d178db` — "Log commit trailer for 202a4f9 (CLAUDE.md skill discipline doc)" (2026-07-27 21:07) — 1 file changed, 4 insertions(+)
 
 **Commit logged:** `a5afa0f` — "Ignore .cursor/skills/ (local tool artifacts, matching the existing .claude/ rule)" (2026-07-27 21:08) — 1 file changed, 1 insertion(+)
+
+**Commit logged:** `8d2c35d` — "Log commit trailer for a5afa0f (gitignore .cursor/skills)" (2026-07-27 21:08) — 1 file changed, 4 insertions(+)

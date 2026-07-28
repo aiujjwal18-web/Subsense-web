@@ -12,6 +12,7 @@ import {
   SUBSCRIPTION_SELECT_COLUMNS,
   computeRenewalUrgency,
   formatMoney,
+  formatRenewalLabel,
   getCategoryName,
   getDisplayName,
   type Currency,
@@ -61,11 +62,7 @@ function SubscriptionListItem({
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium text-foreground">{name}</p>
         <p className="text-xs text-muted-foreground">
-          {formatMoney(row.cost, row.currency)} · Renews{" "}
-          {new Date(row.next_renewal_date).toLocaleDateString(undefined, {
-            month: "short",
-            day: "numeric",
-          })}
+          {formatMoney(row.cost, row.currency)} · {formatRenewalLabel(row.next_renewal_date, urgency)}
         </p>
       </div>
       <RenewalUrgencyBadge urgency={urgency} />

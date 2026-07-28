@@ -33,6 +33,7 @@ import {
   SUBSCRIPTION_SELECT_COLUMNS,
   computeRenewalUrgency,
   formatMoney,
+  formatRenewalLabel,
   getCategoryName,
   getDisplayName,
   type BillingFrequency,
@@ -258,11 +259,7 @@ function SubscriptionDetailsContent({ id }: { id: string }) {
             {formatMoney(row.cost, row.currency)}
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Next renewal: {new Date(row.next_renewal_date).toLocaleDateString(undefined, {
-              month: "short",
-              day: "numeric",
-              year: "numeric",
-            })}
+            {formatRenewalLabel(row.next_renewal_date, urgency)}
           </p>
         </section>
 
