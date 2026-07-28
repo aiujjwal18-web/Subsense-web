@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import { motion } from "motion/react"
 import { Search, X } from "lucide-react"
 import { useNavigate } from "react-router-dom"
+import { toast } from "sonner"
 
 import { CategoryIcon } from "@/components/subscriptions/CategoryIcon"
 import { Button } from "@/components/ui/button"
@@ -149,9 +150,11 @@ export function AddSubscriptionPage() {
 
     if (error || !data) {
       setFormError("Couldn't save this subscription. Please try again.")
+      toast.error("Couldn't save this subscription. Please try again.")
       return
     }
 
+    toast.success("Subscription added")
     navigate(`/subscriptions/${data.id}`)
   }
 

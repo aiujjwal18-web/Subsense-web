@@ -1,6 +1,7 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom"
 
 import { AppLayout } from "@/components/shell/AppLayout"
+import { Toaster } from "@/components/ui/sonner"
 import { AuthProvider } from "@/features/auth/AuthContext"
 import { AuthPage } from "@/features/auth/AuthPage"
 import { ForgotPasswordPage } from "@/features/auth/ForgotPasswordPage"
@@ -38,6 +39,7 @@ function App() {
             <Route path="/profile" element={<ProfilePage />} />
           </Route>
         </Routes>
+        <Toaster />
       </AuthProvider>
     </BrowserRouter>
   )

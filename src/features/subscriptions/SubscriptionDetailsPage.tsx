@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { Pencil } from "lucide-react"
 import { Link, useNavigate, useParams } from "react-router-dom"
+import { toast } from "sonner"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -163,9 +164,11 @@ function SubscriptionDetailsContent({ id }: { id: string }) {
 
     if (error || !data) {
       setFormError("Couldn't save your changes. Please try again.")
+      toast.error("Couldn't save your changes. Please try again.")
       return
     }
 
+    toast.success("Changes saved")
     setRow(data as unknown as SubscriptionRow)
     setEditing(false)
   }
@@ -181,8 +184,10 @@ function SubscriptionDetailsContent({ id }: { id: string }) {
 
     if (error) {
       setFormError("Couldn't archive this subscription. Please try again.")
+      toast.error("Couldn't archive this subscription. Please try again.")
       return
     }
+    toast.success("Subscription archived")
     navigate("/subscriptions")
   }
 

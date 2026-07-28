@@ -28,6 +28,59 @@ Two things keep this current automatically:
 
 ---
 
+## 2026-07-27 — Wire up Sonner toast notifications
+
+**Prompt:**
+Sonner was installed but never connected (confirmed via grep: zero components imported `Toaster` or called `toast.*`). (1) Mount `<Toaster />` once in `App.tsx` from `@/components/ui/sonner` (the pre-styled wrapper), as a sibling to `<Routes>` inside `<AuthProvider>` so it persists across navigation — noted that the wrapper's `useTheme()` call has no `ThemeProvider` anywhere in this app, that's expected/fine since `next-themes` no-ops gracefully without one, not something to fix. (2) Wire real `toast.success`/`toast.error` calls into `AddSubscriptionPage.tsx`'s `handleSave()`, `SubscriptionDetailsPage.tsx`'s `handleSaveEdit()` and `handleArchive()` — the three flows that currently succeed/fail with only inline form state and a redirect. Double-check `SubscriptionsListPage.tsx` for any direct mutation needing one, rather than assuming it has none. (3) Check whether Sonner's default enter/exit transition is close enough to doc 05's frozen DEC-044 timing (200ms fade+rise in, 150ms fade-only out) or needs a `toastOptions` override — use judgment, don't over-engineer for an MVP capstone.
+
+**What was done:**
+- `App.tsx`: imported `{ Toaster }` from `@/components/ui/sonner`, mounted as `<Toaster />` right after `</Routes>`, still inside `<AuthProvider>`.
+- `AddSubscriptionPage.tsx`: `handleSave()` now calls `toast.success("Subscription added")` right before the existing success-path `navigate(...)`, and `toast.error("Couldn't save this subscription. Please try again.")` alongside the existing `setFormError(...)` on failure (both the inline error and the toast stay — the inline one persists on the form, the toast is transient). Added `import { toast } from "sonner"` (the raw package — the project's wrapper only re-exports `Toaster`, not the trigger function, which is the standard pattern here).
+- `SubscriptionDetailsPage.tsx`: `handleSaveEdit()` gets `toast.success("Changes saved")` / `toast.error("Couldn't save your changes. Please try again.")` alongside its existing success/failure paths; `handleArchive()` gets `toast.success("Subscription archived")` before its `navigate("/subscriptions")`, and `toast.error("Couldn't archive this subscription. Please try again.")` alongside its existing `setFormError(...)`. Same `import { toast } from "sonner"` addition.
+- `SubscriptionsListPage.tsx`: re-confirmed via grep for `.insert(`/`.update(`/`.delete(` — no matches, this file only reads and renders `<SubscriptionCard>`. No change, confirmed rather than assumed.
+- Toast motion timing: left Sonner's default transition untouched. Its enter/exit animation is baked into its shipped stylesheet, not exposed as a simple duration prop (the `duration` prop controls on-screen time before auto-dismiss, not transition speed) — matching DEC-044's exact 200ms/150ms values would mean overriding Sonner's internal `[data-sonner-toast]` CSS, real surface area to fight a maintained library for a difference already in the same spirit (fade-based, no dramatic slide). Flagged as a deliberate "close enough for an MVP capstone" call, not a silent skip.
+
+**Verification:**
+- `npx tsc -b`: clean.
+- `npx eslint .`: same 4 pre-existing errors, none new.
+- `npm run build`: clean.
+- Headless-Chromium check on `/auth` (temporary `playwright-core` install, removed after — confirmed via `git diff package.json` showing no diff): confirmed the Toaster container actually renders in the DOM (`<section aria-label="Notifications alt+T" aria-live="polite" ...>`, Sonner's real toaster root) with zero console/page errors — the `next-themes`-without-a-provider path genuinely doesn't crash, as expected. (Hit and cleaned up an unrelated environment issue mid-check: several stray `vite` dev-server processes had accumulated across this session's earlier verification rounds on ports 5173-5175, from background `npm run dev` calls that weren't fully torn down since `npm` doesn't forward `SIGTERM` to the process it spawns — identified the exact PIDs via `netstat -ano` bound to those ports specifically and killed only those, rather than a blanket node-process kill.)
+- Functional check (toasts actually firing on a real save/archive) **not done this pass** — requires an authenticated session to reach the add/edit/archive forms at all, same credential gap as every round this session. Flagged rather than skipped silently.
+
+**Commit:** (see next entry — logged automatically by the post-commit hook)
+
+---
+
+# Build Log — Subsense-web
+
+Append-only, most-recent-first traceability log of build steps, the prompts that drove them, and how each step was verified. This lives inside the code repo (not the IIT Capstone governance docs) because it's a record of *implementation activity*, not product/architecture decisions — those still belong in `08_Decision_Log`.
+
+Two things keep this current automatically:
+1. A git `post-commit` hook (`.git/hooks/post-commit`, local-only — not versioned by git itself) appends a one-line entry for every commit: timestamp, hash, message.
+2. `CLAUDE.md` instructs Claude Code to append a full entry here — the prompt it was given, what it built, and how it verified the work — before committing each task, using the template below.
+
+---
+
+## Entry template
+
+```
+## YYYY-MM-DD — <short task title>
+
+**Prompt:**
+<the prompt given to Claude Code, or a faithful summary if very long>
+
+**What was done:**
+- <bullet list of concrete changes / files touched>
+
+**Verification:**
+- <build/lint/test results>
+- <manual smoke test results, if any>
+
+**Commit:** <hash> — "<commit message>"
+```
+
+---
+
 ## 2026-07-27 — Consolidate renewal-date display into one shared formatter
 
 **Prompt:**
