@@ -167,27 +167,53 @@ export function AuthPage() {
         <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
           <div className="flex items-center gap-4">
             <LogoIcon className="size-16 shrink-0" />
-            <KineticText
-              text="SubSense"
-              effect="typewriter"
-              speed={0.065}
-              className="font-heading text-5xl font-semibold text-foreground"
-            />
+            {/* Two instances, not one — reads as a single continuously-typed
+                word via hideCursorOnComplete on "Sub" (see KineticText.tsx),
+                so its cursor disappears at the exact instant "Sense" starts
+                rather than fading over it. whitespace-nowrap keeps the pair
+                as one flex item so the row's gap-4 doesn't insert a gap
+                between them. */}
+            <span className="whitespace-nowrap">
+              <KineticText
+                text="Sub"
+                effect="typewriter"
+                speed={0.065}
+                hideCursorOnComplete
+                className="font-heading text-5xl font-semibold text-primary"
+              />
+              <KineticText
+                text="Sense"
+                effect="typewriter"
+                speed={0.065}
+                startDelay={3 * 0.065}
+                className="font-heading text-5xl font-semibold text-foreground"
+              />
+            </span>
           </div>
           {/* pl-20 = icon (size-16 = 4rem) + gap-4 (1rem), so this lines up
               under the wordmark's left edge, not the icon's. startDelay
               hands off from the wordmark's own typing (8 chars × 0.065s ≈
-              0.52s) plus a ~0.5s pause. keepCursorAfter: this is the last
-              element in the sequence, so its cursor stays blinking instead
-              of fading — the wordmark's own cursor clears once it's done. */}
+              0.52s) plus a ~0.5s pause — unchanged, since the wordmark's
+              total typing time is the same whether typed as one instance or
+              two sequenced ones. Two instances here too, same reasoning as
+              the wordmark above: a real space (not a trailing space baked
+              into either string, which default whitespace-collapsing could
+              silently eat) sits between them so it reads as one sentence. */}
           <div className="mt-5 max-w-sm lg:pl-20">
             <KineticText
-              text="Track smarter. Renew wiser."
+              text="Track smarter."
               effect="typewriter"
               speed={0.035}
               startDelay={1}
-              keepCursorAfter
+              hideCursorOnComplete
               className="text-base text-foreground/70"
+            />{" "}
+            <KineticText
+              text="Renew wiser."
+              effect="typewriter"
+              speed={0.035}
+              startDelay={1 + 14 * 0.035}
+              className="text-base text-primary"
             />
           </div>
         </div>

@@ -24,6 +24,12 @@ interface KineticTextProps {
    * (e.g. a tagline that hands off from a wordmark that typed first).
    * Defaults to false. */
   keepCursorAfter?: boolean
+  /** Typewriter only: hide the cursor immediately on completion instead of
+   * the default blink-twice-then-fade — for a non-final segment in a
+   * multi-instance typed sequence (e.g. one half of a two-tone word),
+   * where the fade window would otherwise overlap the next segment's own
+   * active cursor and show two at once. Defaults to false. */
+  hideCursorOnComplete?: boolean
 }
 
 // Reused by both effects: plays once on mount, replays on hover via
@@ -37,6 +43,7 @@ export function KineticText({
   speed,
   startDelay = 0,
   keepCursorAfter = false,
+  hideCursorOnComplete = false,
 }: KineticTextProps) {
   const [playCount, setPlayCount] = useState(0)
   const lastTriggerRef = useRef(0)
@@ -72,6 +79,7 @@ export function KineticText({
           // should start immediately, not repeat that pause every time.
           startDelay={playCount === 0 ? startDelay : 0}
           keepCursorAfter={keepCursorAfter}
+          hideCursorOnComplete={hideCursorOnComplete}
         />
       ) : (
         <StaggerSegments text={text} by={by} playCount={playCount} />
@@ -139,19 +147,33 @@ function TypewriterSegments({
   speed,
   startDelay,
   keepCursorAfter,
+  hideCursorOnComplete,
 }: {
   text: string
   by: "character" | "word"
   speed: number
   startDelay: number
   keepCursorAfter: boolean
+  hideCursorOnComplete: boolean
 }) {
   const [revealedText, setRevealedText] = useState("")
-  const [cursorPhase, setCursorPhase] = useState<"typing" | "fading" | "hidden">("typing")
+  // "waiting": mounted but startDelay hasn't elapsed yet — no cursor shown.
+  // Without this, every instance's cursor blinks from mount regardless of
+  // startDelay, which is invisible for a single standalone instance but a
+  // real bug for a sequenced multi-instance split (e.g. a two-tone word):
+  // a later segment's idle cursor would already be visible, at its own
+  // reserved position, while an earlier segment is still typing or the
+  // whole thing is still waiting to start — two cursors on screen at once.
+  const [cursorPhase, setCursorPhase] = useState<"waiting" | "typing" | "fading" | "hidden">(
+    startDelay > 0 ? "waiting" : "typing"
+  )
 
   useEffect(() => {
     const words = by === "word" ? text.split(" ") : null
     const totalSteps = words ? words.length : text.length
+
+    const startTimeout =
+      startDelay > 0 ? setTimeout(() => setCursorPhase("typing"), startDelay * 1000) : null
 
     const controls = animate(0, totalSteps, {
       duration: totalSteps * speed,
@@ -165,13 +187,23 @@ function TypewriterSegments({
       // keep it — e.g. the final element in a typed sequence (a tagline
       // handing off from a wordmark) stays on "typing", which already
       // renders the same infinite blink, so it just never fades.
+      // hideCursorOnComplete skips the fade window entirely — for a
+      // non-final segment in a multi-instance sequence, where the ~1.8s
+      // fade would otherwise overlap the next segment's own active cursor.
       onComplete: () => {
-        if (!keepCursorAfter) setCursorPhase("fading")
+        if (hideCursorOnComplete) {
+          setCursorPhase("hidden")
+        } else if (!keepCursorAfter) {
+          setCursorPhase("fading")
+        }
       },
     })
 
-    return () => controls.stop()
-  }, [text, by, speed, startDelay, keepCursorAfter])
+    return () => {
+      controls.stop()
+      if (startTimeout) clearTimeout(startTimeout)
+    }
+  }, [text, by, speed, startDelay, keepCursorAfter, hideCursorOnComplete])
 
   // Deterministic hide, rather than relying on onAnimationComplete firing
   // correctly across a mid-flight swap from an Infinite-repeat transition
@@ -209,7 +241,7 @@ function TypewriterSegments({
           a few px instead, which is invisible in practice. */}
       <span className="absolute top-0 left-0 w-full whitespace-nowrap">
         <span aria-hidden="true">{revealedText}</span>
-        {cursorPhase !== "hidden" && (
+        {cursorPhase !== "hidden" && cursorPhase !== "waiting" && (
           <motion.span
             aria-hidden="true"
             className="ml-0.5 inline-block w-[2px] translate-y-[0.1em] bg-current align-middle"

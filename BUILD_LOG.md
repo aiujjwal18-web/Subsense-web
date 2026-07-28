@@ -28,6 +28,59 @@ Two things keep this current automatically:
 
 ---
 
+## 2026-07-27 — Logo asset swap, home link, two-tone wordmark/tagline
+
+**Prompt:**
+Four related fixes: (1) replace `LogoIcon.tsx`'s hand-drawn SVG with the real image asset at `src/assets/subsense-logo-icon.png`, keeping the same `className`-only API so Header/Logo.tsx/AuthPage.tsx pick it up automatically; (2) wrap `Header.tsx`'s `<LogoIcon />` in a `react-router-dom` `Link` to `/` — it wasn't clickable at all; (3) split "SubSense" into two-tone gold/white everywhere it renders as text — a static split in `Logo.tsx`, and two sequenced `KineticText` instances in `AuthPage.tsx`'s hero, timed so "Sense" starts the instant "Sub" finishes typing (no pause) and reads as one continuous word; (4) same two-tone split on the tagline ("Track smarter." white, "Renew wiser." gold), and remove `keepCursorAfter` from whichever instance ends up last so the cursor fades out instead of blinking forever. Explicitly flagged to watch for layout/spacing regressions given this component's own comments document prior real bugs around cursor positioning and box-sizing.
+
+**What was done:**
+- `LogoIcon.tsx`: replaced the `<svg>` S-curve + glass-tile wrapper `<div>` with a single `<img>` importing the new PNG. Viewed the actual asset first — it's a complete, self-contained rendered icon (bezel, background, glow all baked in), so the old glass-tint wrapper (which would've been inert/redundant against an opaque image) was dropped rather than kept around the new `<img>`; `rounded-[22.5%]` carried forward from the old wrapper for consistent tile-shape clipping. `useId()`/SVG gradient defs removed as no longer applicable. Component API unchanged (`{ className }`), so no other file needed edits for this part.
+- `Header.tsx`: `<LogoIcon />` now wrapped in `<Link to="/" aria-label="Home">` (added `Link` to the existing `react-router-dom` import); `shrink-0` moved from `LogoIcon` to the `Link` itself, now the actual flex child.
+- `Logo.tsx`: single `<span>SubSense</span>` split into an outer span carrying the shared font/size classes and two inner color-only spans (`text-primary` "Sub", `text-foreground` "Sense").
+- `KineticText.tsx`: added a new `hideCursorOnComplete?: boolean` prop (default `false`, fully backward-compatible) that skips straight to `cursorPhase: "hidden"` on completion instead of the default 2-blink/~1.8s fade — needed so a non-final segment's cursor doesn't linger and visually overlap the next segment's own active cursor. **Found and fixed a second, related bug during verification, not part of the original plan**: every instance's cursor was already blinking from mount regardless of `startDelay`, which is invisible for a lone instance but meant a later segment's idle cursor was visible (at its own reserved position) before its turn — confirmed live via screenshot (two stray cursors during the tagline's 1s pre-type wait). Added a `"waiting"` cursor phase, active whenever `startDelay > 0`, that shows no cursor at all until a plain `setTimeout` flips it to `"typing"` in sync with the delay.
+- `AuthPage.tsx`: hero wordmark split into two `KineticText` instances ("Sub" `hideCursorOnComplete`, "Sense" `startDelay={3 * 0.065}` — exactly "Sub"'s own typing duration), wrapped in a `whitespace-nowrap` span so the flex row's `gap-4` doesn't insert a gap between them. Tagline split into "Track smarter." (`startDelay={1}`, `hideCursorOnComplete`, keeps its original color) and "Renew wiser." (`startDelay={1 + 14 * 0.035}`, `text-primary`, no `keepCursorAfter` — now the true last element, falls through to the default fade-then-hide), joined by a static `{" "}` between the two components rather than a trailing space baked into either `text` prop, to avoid relying on how default CSS whitespace-collapsing handles a trailing space at an inline-box edge.
+
+**Verification:**
+- `npx tsc -b`: clean (confirms the PNG import resolves correctly under Vite's asset-import types).
+- `npx eslint .`: same 4 pre-existing errors, none new.
+- `npm run build`: clean; confirmed `dist/assets/subsense-logo-icon-*.png` actually present in the bundle.
+- Headless-Chromium visual pass on `/auth` (temporary `playwright-core` install, removed after — confirmed via `git diff package.json` showing no diff), screenshotted at the Sub→Sense handoff, the tagline's internal handoff, and after everything finishes: confirmed the real logo image renders, computed `color` on each split span matches the intended token (`rgb(255,200,0)` primary / `rgb(255,255,255)` foreground / foreground-70%-opacity), "SubSense" and the tagline both type with a single clean cursor and no visible seam at the color handoff, a real single space sits between "Track smarter." and "Renew wiser.", and the cursor is fully gone (not blinking) once "Renew wiser." finishes. Zero console/page errors throughout.
+- Header's clickable logo (post-login, behind `ProtectedRoute`) **not verified this pass** — same auth-credential gap as every round this session, flagged rather than skipped silently.
+
+**Commit:** (see next entry — logged automatically by the post-commit hook)
+
+---
+
+# Build Log — Subsense-web
+
+Append-only, most-recent-first traceability log of build steps, the prompts that drove them, and how each step was verified. This lives inside the code repo (not the IIT Capstone governance docs) because it's a record of *implementation activity*, not product/architecture decisions — those still belong in `08_Decision_Log`.
+
+Two things keep this current automatically:
+1. A git `post-commit` hook (`.git/hooks/post-commit`, local-only — not versioned by git itself) appends a one-line entry for every commit: timestamp, hash, message.
+2. `CLAUDE.md` instructs Claude Code to append a full entry here — the prompt it was given, what it built, and how it verified the work — before committing each task, using the template below.
+
+---
+
+## Entry template
+
+```
+## YYYY-MM-DD — <short task title>
+
+**Prompt:**
+<the prompt given to Claude Code, or a faithful summary if very long>
+
+**What was done:**
+- <bullet list of concrete changes / files touched>
+
+**Verification:**
+- <build/lint/test results>
+- <manual smoke test results, if any>
+
+**Commit:** <hash> — "<commit message>"
+```
+
+---
+
 ## 2026-07-27 — Wire up Sonner toast notifications
 
 **Prompt:**
