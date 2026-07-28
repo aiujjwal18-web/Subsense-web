@@ -636,3 +636,5 @@ Implement Phase 2 (Authentication and Profile) for SubSense per 16_Implementatio
 **Commit logged:** `a5afa0f` — "Ignore .cursor/skills/ (local tool artifacts, matching the existing .claude/ rule)" (2026-07-27 21:08) — 1 file changed, 1 insertion(+)
 
 **Commit logged:** `8d2c35d` — "Log commit trailer for a5afa0f (gitignore .cursor/skills)" (2026-07-27 21:08) — 1 file changed, 4 insertions(+)
+
+**Commit logged:** `6860460` — "Renewal-date display: shared formatRenewalLabel() across all four render sites" (2026-07-28 21:51) — 5 files changed, 81 insertions(+), 22 deletions(-)
