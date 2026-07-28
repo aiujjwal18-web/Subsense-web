@@ -800,3 +800,9 @@ Implement Phase 2 (Authentication and Profile) for SubSense per 16_Implementatio
 **Commit logged:** `8d2c35d` — "Log commit trailer for a5afa0f (gitignore .cursor/skills)" (2026-07-27 21:08) — 1 file changed, 4 insertions(+)
 
 **Commit logged:** `6860460` — "Renewal-date display: shared formatRenewalLabel() across all four render sites" (2026-07-28 21:51) — 5 files changed, 81 insertions(+), 22 deletions(-)
+
+**Commit logged:** `79e8c35` — "Wire up Sonner toast notifications" (2026-07-28 21:58) — 4 files changed, 63 insertions(+)
+
+**Commit logged:** `319c98c` — "Logo asset swap, home link, two-tone wordmark/tagline" (2026-07-28 21:59) — 6 files changed, 137 insertions(+), 67 deletions(-)
+
+**Commit logged:** `4b2f82c` — "Restructure app shell: remove Header bar, float logo strip + actions" (2026-07-28 22:00) — 5 files changed, 197 insertions(+), 120 deletions(-)
