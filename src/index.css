@@ -62,7 +62,7 @@
 
 /* Registered so the browser tweens --r smoothly across the keyframe below
    (an unregistered custom property jumps instead of animating). Backs
-   GradientButton's conic-gradient rotation. */
+   Button's "gradient" variant conic-gradient rotation. */
 @property --r {
     syntax: '<angle>';
     inherits: false;

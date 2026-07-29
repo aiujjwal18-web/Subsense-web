@@ -52,7 +52,7 @@ export function TopBarActions() {
       </Button>
       <Button
         type="button"
-        variant="outline"
+        variant="gradient"
         size="sm"
         onClick={() => navigate("/subscriptions/add")}
         className="gap-1.5"

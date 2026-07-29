@@ -156,6 +156,7 @@ export function DecisionWorkspacePage() {
               </p>
               <Button
                 type="button"
+                variant="gradient"
                 size="sm"
                 onClick={() => navigate("/subscriptions/add")}
                 className="gap-1.5"

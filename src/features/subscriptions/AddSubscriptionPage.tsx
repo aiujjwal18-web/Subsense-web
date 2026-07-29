@@ -396,7 +396,7 @@ export function AddSubscriptionPage() {
             <Button type="button" variant="outline" onClick={() => navigate("/subscriptions")}>
               Cancel
             </Button>
-            <Button type="button" onClick={handleSave} disabled={saving}>
+            <Button type="button" variant="gradient" onClick={handleSave} disabled={saving}>
               {saving ? "Saving…" : "Save Subscription"}
             </Button>
           </div>

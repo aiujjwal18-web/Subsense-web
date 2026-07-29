@@ -19,6 +19,8 @@ const buttonVariants = cva(
         destructive:
           "bg-transparent text-destructive border border-border hover:bg-destructive/12 hover:border-destructive active:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/40",
         link: "text-primary underline-offset-4 hover:underline",
+        gradient:
+          "relative border-0 animate-rotating-gradient text-foreground after:absolute after:inset-[2px] after:z-0 after:rounded-[calc(var(--radius-lg)-2px)] after:bg-background after:content-[''] motion-reduce:animate-none motion-reduce:[background:conic-gradient(#FFC800,#FFFFFF,#FFC800)]! active:scale-[0.98] active:opacity-90",
       },
       size: {
         default:
@@ -45,14 +47,28 @@ function Button({
   className,
   variant = "default",
   size = "default",
+  children,
+  style,
   ...props
 }: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
+  const gradientStyle: React.CSSProperties | undefined =
+    variant === "gradient"
+      ? { background: "conic-gradient(from var(--r), #FFC800, #FFFFFF, #FFC800)" }
+      : undefined
+
   return (
     <ButtonPrimitive
       data-slot="button"
       className={cn(buttonVariants({ variant, size, className }))}
+      style={{ ...style, ...gradientStyle }}
       {...props}
-    />
+    >
+      {variant === "gradient" ? (
+        <span className="relative z-10 inline-flex items-center gap-[inherit]">{children}</span>
+      ) : (
+        children
+      )}
+    </ButtonPrimitive>
   )
 }
 
