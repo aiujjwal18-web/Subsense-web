@@ -22,53 +22,42 @@ export function SubscriptionsListPage() {
   const [rows, setRows] = useState<SubscriptionRow[]>([])
   const [state, setState] = useState<LoadState>("loading")
 
+  async function load() {
+    setState("loading")
+    const { data, error } = await supabase
+      .from("subscriptions")
+      .select(SUBSCRIPTION_SELECT_COLUMNS)
+      .neq("lifecycle_status", "archived")
+      .order("next_renewal_date", { ascending: true })
+
+    if (error) {
+      setState("error")
+      return
+    }
+
+    setRows((data ?? []) as unknown as SubscriptionRow[])
+    setState("ready")
+  }
+
   useEffect(() => {
-    let cancelled = false
-
-    async function load() {
-      setState("loading")
-      const { data, error } = await supabase
-        .from("subscriptions")
-        .select(SUBSCRIPTION_SELECT_COLUMNS)
-        .neq("lifecycle_status", "archived")
-        .order("next_renewal_date", { ascending: true })
-
-      if (cancelled) return
-
-      if (error) {
-        setState("error")
-        return
-      }
-
-      setRows((data ?? []) as unknown as SubscriptionRow[])
-      setState("ready")
+    async function run() {
+      await load()
     }
-
-    load()
-
-    return () => {
-      cancelled = true
-    }
+    run()
   }, [])
 
   return (
     <div className="px-6 py-12">
       <div className="mx-auto max-w-5xl">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="font-heading text-2xl font-semibold text-foreground">
-              Subscriptions
-            </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {state === "ready"
-                ? `${rows.length} tracked subscription${rows.length === 1 ? "" : "s"}`
-                : "Your active subscriptions"}
-            </p>
-          </div>
-          <Button type="button" onClick={() => navigate("/subscriptions/add")} className="gap-1.5">
-            <Plus />
-            Add Subscription
-          </Button>
+        <div>
+          <h1 className="font-heading text-2xl font-semibold text-foreground">
+            Subscriptions
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {state === "ready"
+              ? `${rows.length} tracked subscription${rows.length === 1 ? "" : "s"}`
+              : "Your active subscriptions"}
+          </p>
         </div>
 
         {state === "loading" && (
@@ -86,7 +75,13 @@ export function SubscriptionsListPage() {
             <p className="text-sm text-muted-foreground">
               You haven't added any subscriptions yet.
             </p>
-            <Button type="button" size="sm" onClick={() => navigate("/subscriptions/add")} className="gap-1.5">
+            <Button
+              type="button"
+              variant="gradient"
+              size="sm"
+              onClick={() => navigate("/subscriptions/add")}
+              className="gap-1.5"
+            >
               <Plus />
               Add your first subscription
             </Button>
@@ -98,6 +93,7 @@ export function SubscriptionsListPage() {
             {rows.map((row, index) => (
               <motion.div key={row.id} {...staggerItemMotion(index)}>
                 <SubscriptionCard
+                  id={row.id}
                   name={getDisplayName(row)}
                   category={getCategoryName(row)}
                   cost={row.cost}
@@ -106,8 +102,9 @@ export function SubscriptionsListPage() {
                   customIntervalDays={row.custom_interval_days ?? undefined}
                   nextRenewalDate={row.next_renewal_date}
                   lifecycleStatus={row.lifecycle_status}
-                  renewalUrgency={computeRenewalUrgency(row.next_renewal_date)}
+                  renewalUrgency={computeRenewalUrgency(row.next_renewal_date, row.lifecycle_status)}
                   onClick={() => navigate(`/subscriptions/${row.id}`)}
+                  onUpdated={load}
                 />
               </motion.div>
             ))}

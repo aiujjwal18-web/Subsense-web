@@ -97,7 +97,13 @@ export function daysUntil(dateStr: string): number {
 
 // Not a frozen spec value — reuses the existing two_day/seven_day reminder windows as a
 // reasonable default per-phase-4 guidance, pending an official doc 10 threshold.
-export function computeRenewalUrgency(nextRenewalDate: string): RenewalUrgency {
+// A paused subscription is excluded from urgency entirely (NEXT_SESSION_AGENDA item 7) —
+// not a soft pause that keeps counting underneath, hence the short-circuit to "normal".
+export function computeRenewalUrgency(
+  nextRenewalDate: string,
+  lifecycleStatus?: LifecycleStatus
+): RenewalUrgency {
+  if (lifecycleStatus === "paused") return "normal"
   const days = daysUntil(nextRenewalDate)
   if (days < 0) return "overdue"
   if (days <= 2) return "critical"
@@ -145,6 +151,39 @@ export function estimateAnnualCost(
       if (!customIntervalDays || customIntervalDays <= 0) return 0
       return cost * (365 / customIntervalDays)
   }
+}
+
+export function formatDateOnly(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
+}
+
+/**
+ * Adds one billing interval to `fromDate`. Used by the "Paid" quick-action to compute the
+ * new next_renewal_date — the caller decides whether `fromDate` is the current renewal date
+ * or the payment date (NEXT_SESSION_AGENDA item 7's forward-calculation rule), this function
+ * only does the "+1 interval" step.
+ */
+export function computeNextRenewalDate(
+  fromDate: string,
+  billingFrequency: BillingFrequency,
+  customIntervalDays?: number | null
+): string {
+  const date = parseDateOnly(fromDate)
+  switch (billingFrequency) {
+    case "monthly":
+      date.setMonth(date.getMonth() + 1)
+      break
+    case "every_28_days":
+      date.setDate(date.getDate() + 28)
+      break
+    case "yearly":
+      date.setFullYear(date.getFullYear() + 1)
+      break
+    case "custom":
+      date.setDate(date.getDate() + (customIntervalDays && customIntervalDays > 0 ? customIntervalDays : 0))
+      break
+  }
+  return formatDateOnly(date)
 }
 
 export function formatMoney(amount: number, currency: Currency): string {

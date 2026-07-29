@@ -1,9 +1,13 @@
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
+import { toast } from "sonner"
 
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { CategoryIcon } from "@/components/subscriptions/CategoryIcon"
 import { GlowingEffect } from "@/components/subscriptions/GlowingEffect"
+import { MarkPaidDialog } from "@/components/subscriptions/MarkPaidDialog"
 import { RenewalUrgencyBadge } from "@/components/subscriptions/RenewalUrgencyBadge"
+import { supabase } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 import {
   BILLING_FREQUENCY_LABEL,
@@ -18,6 +22,7 @@ import {
 export type { BillingFrequency, LifecycleStatus, RenewalUrgency }
 
 export interface SubscriptionCardProps {
+  id: string
   name: string
   category?: string
   cost: number
@@ -28,6 +33,7 @@ export interface SubscriptionCardProps {
   lifecycleStatus: LifecycleStatus
   renewalUrgency: RenewalUrgency
   onClick?: () => void
+  onUpdated?: () => void
   className?: string
 }
 
@@ -57,6 +63,7 @@ const LIFECYCLE_COLOR: Record<LifecycleStatus, StateColor> = {
 }
 
 export function SubscriptionCard({
+  id,
   name,
   category,
   cost,
@@ -67,8 +74,15 @@ export function SubscriptionCard({
   lifecycleStatus,
   renewalUrgency,
   onClick,
+  onUpdated,
   className,
 }: SubscriptionCardProps) {
+  const [mutating, setMutating] = useState(false)
+  const [markPaidOpen, setMarkPaidOpen] = useState(false)
+
+  const nextRenewalDateStr =
+    typeof nextRenewalDate === "string" ? nextRenewalDate : nextRenewalDate.toISOString().slice(0, 10)
+
   const formattedCost = useMemo(() => {
     try {
       return new Intl.NumberFormat(undefined, {
@@ -88,15 +102,35 @@ export function SubscriptionCard({
         : "/custom"
       : FREQUENCY_SUFFIX[billingFrequency]
 
-  const renewalLabel = useMemo(() => {
-    const dateStr =
-      typeof nextRenewalDate === "string" ? nextRenewalDate : nextRenewalDate.toISOString().slice(0, 10)
-    return formatRenewalLabel(dateStr, renewalUrgency)
-  }, [nextRenewalDate, renewalUrgency])
+  const renewalLabel = useMemo(
+    () => formatRenewalLabel(nextRenewalDateStr, renewalUrgency),
+    [nextRenewalDateStr, renewalUrgency]
+  )
 
   const handleActivate = () => {
     if (onClick) onClick()
     else console.log("open subscription details")
+  }
+
+  async function handleTogglePause() {
+    const nextStatus = lifecycleStatus === "paused" ? "active" : "paused"
+    setMutating(true)
+    const { error } = await supabase
+      .from("subscriptions")
+      .update({ lifecycle_status: nextStatus })
+      .eq("id", id)
+    setMutating(false)
+
+    if (error) {
+      toast.error(
+        nextStatus === "paused"
+          ? "Couldn't pause this subscription. Please try again."
+          : "Couldn't resume this subscription. Please try again."
+      )
+      return
+    }
+    toast.success(nextStatus === "paused" ? "Subscription paused" : "Subscription resumed")
+    onUpdated?.()
   }
 
   return (
@@ -156,6 +190,58 @@ export function SubscriptionCard({
         </div>
         <RenewalUrgencyBadge urgency={renewalUrgency} />
       </div>
+
+      {lifecycleStatus !== "archived" && (
+        <div
+          className="flex items-center gap-2"
+          onClick={(event) => event.stopPropagation()}
+          onKeyDown={(event) => event.stopPropagation()}
+        >
+          {lifecycleStatus === "paused" ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="xs"
+              disabled={mutating}
+              onClick={handleTogglePause}
+            >
+              Resume
+            </Button>
+          ) : (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                size="xs"
+                disabled={mutating}
+                onClick={() => setMarkPaidOpen(true)}
+              >
+                Paid
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="xs"
+                disabled={mutating}
+                onClick={handleTogglePause}
+              >
+                Paused
+              </Button>
+            </>
+          )}
+
+          <MarkPaidDialog
+            key={markPaidOpen ? "open" : "closed"}
+            open={markPaidOpen}
+            onOpenChange={setMarkPaidOpen}
+            id={id}
+            nextRenewalDate={nextRenewalDateStr}
+            billingFrequency={billingFrequency}
+            customIntervalDays={customIntervalDays}
+            onUpdated={onUpdated}
+          />
+        </div>
+      )}
     </div>
   )
 }

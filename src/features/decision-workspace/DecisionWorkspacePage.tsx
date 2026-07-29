@@ -51,7 +51,7 @@ function SubscriptionListItem({
 }) {
   const name = getDisplayName(row)
   const category = getCategoryName(row)
-  const urgency = computeRenewalUrgency(row.next_renewal_date)
+  const urgency = computeRenewalUrgency(row.next_renewal_date, row.lifecycle_status)
 
   return (
     <button
@@ -123,12 +123,14 @@ export function DecisionWorkspacePage() {
   const totals = computeTotalsByCurrency(rows)
 
   const upcomingRenewals = [...rows]
+    .filter((row) => row.lifecycle_status !== "paused")
     .sort((a, b) => a.next_renewal_date.localeCompare(b.next_renewal_date))
     .slice(0, 5)
 
   const recommendedReviews = rows
     .filter((row) => {
-      const urgency = computeRenewalUrgency(row.next_renewal_date)
+      if (row.lifecycle_status === "paused") return false
+      const urgency = computeRenewalUrgency(row.next_renewal_date, row.lifecycle_status)
       return urgency !== "normal" || row.lifecycle_status === "review_due"
     })
     .slice(0, 5)

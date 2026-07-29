@@ -222,7 +222,7 @@ function SubscriptionDetailsContent({ id }: { id: string }) {
 
   const displayName = getDisplayName(row)
   const category = getCategoryName(row)
-  const urgency = computeRenewalUrgency(row.next_renewal_date)
+  const urgency = computeRenewalUrgency(row.next_renewal_date, row.lifecycle_status)
   const isArchived = row.lifecycle_status === "archived"
 
   return (
