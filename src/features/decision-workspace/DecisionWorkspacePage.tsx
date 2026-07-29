@@ -4,6 +4,7 @@ import { Plus } from "lucide-react"
 import { Link, useNavigate } from "react-router-dom"
 
 import { CategoryIcon } from "@/components/subscriptions/CategoryIcon"
+import { GlowingEffect } from "@/components/subscriptions/GlowingEffect"
 import { RenewalUrgencyBadge } from "@/components/subscriptions/RenewalUrgencyBadge"
 import { Button } from "@/components/ui/button"
 import { staggerItemMotion } from "@/lib/motion"
@@ -143,7 +144,8 @@ export function DecisionWorkspacePage() {
         </p>
 
         {/* Today's Financial Context */}
-        <section className="mt-8 rounded-lg border border-border bg-card p-6">
+        <section className="relative mt-8 rounded-lg border border-border bg-card p-6">
+          <GlowingEffect glow disabled={false} spread={30} proximity={48} borderWidth={2} />
           <h2 className="font-heading text-sm font-semibold text-foreground">
             Today's Financial Context
           </h2>
@@ -231,7 +233,8 @@ export function DecisionWorkspacePage() {
         </section>
 
         {/* Recommended Reviews */}
-        <section className="mt-6 rounded-lg border border-border bg-card p-6">
+        <section className="relative mt-6 rounded-lg border border-border bg-card p-6">
+          <GlowingEffect glow disabled={false} spread={30} proximity={48} borderWidth={2} />
           <h2 className="font-heading text-sm font-semibold text-foreground">
             Recommended Reviews
           </h2>

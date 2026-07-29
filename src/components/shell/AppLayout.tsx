@@ -11,7 +11,7 @@ export function AppLayout() {
 
   return (
     <div className="relative flex h-dvh flex-col overflow-hidden bg-background text-foreground">
-      <BorderBeam duration={30} borderWidth={1} colorFrom="#FFC800" colorTo="#FFFFFF" />
+      <BorderBeam size={320} duration={10} borderWidth={2} colorFrom="#FFC800" colorTo="#FFFFFF" />
       <TopBar onOpenMobileSidebar={() => setMobileOpen(true)} />
       <TopBarActions />
       <div className="flex min-h-0 flex-1">
