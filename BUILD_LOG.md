@@ -905,3 +905,11 @@ Implement Phase 2 (Authentication and Profile) for SubSense per 16_Implementatio
 **Commit logged:** `319c98c` — "Logo asset swap, home link, two-tone wordmark/tagline" (2026-07-28 21:59) — 6 files changed, 137 insertions(+), 67 deletions(-)
 
 **Commit logged:** `4b2f82c` — "Restructure app shell: remove Header bar, float logo strip + actions" (2026-07-28 22:00) — 5 files changed, 197 insertions(+), 120 deletions(-)
+
+**Commit logged:** `b4a3735` — "Log commit trailers for 79e8c35, 319c98c, 4b2f82c (Sonner, logo/wordmark, header restructure)" (2026-07-28 22:01) — 1 file changed, 6 insertions(+)
+
+**Commit logged:** `9a4d691` — "Retune Border Beam visibility + extend glow-card to two dashboard sections" (2026-07-29 20:03) — 2 files changed, 6 insertions(+), 3 deletions(-)
+
+**Commit logged:** `a6e24ed` — "Fold GradientButton into buttonVariants "gradient", fix rotation bug, apply to CTAs" (2026-07-29 20:04) — 6 files changed, 21 insertions(+), 68 deletions(-)
+
+**Commit logged:** `679aecb` — "Card-level Paid/Paused/Resume quick-actions on SubscriptionCard" (2026-07-29 20:04) — 7 files changed, 401 insertions(+), 49 deletions(-)
