@@ -13,14 +13,14 @@ const buttonVariants = cva(
         outline:
           "border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
         secondary:
-          "border border-border bg-transparent text-secondary-foreground hover:bg-card hover:border-border-strong active:bg-card",
+          "border border-secondary-foreground bg-secondary text-secondary-foreground hover:bg-[rgba(163,230,53,0.14)] active:bg-[rgba(163,230,53,0.20)]",
         ghost:
           "hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50",
         destructive:
           "bg-transparent text-destructive border border-border hover:bg-destructive/12 hover:border-destructive active:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/40",
         link: "text-primary underline-offset-4 hover:underline",
         gradient:
-          "relative border-0 animate-rotating-gradient text-foreground after:absolute after:inset-[2px] after:z-0 after:rounded-[calc(var(--radius-lg)-2px)] after:bg-background after:content-[''] motion-reduce:animate-none motion-reduce:[background:conic-gradient(#FFC800,#FFFFFF,#FFC800)]! active:scale-[0.98] active:opacity-90",
+          "relative border-0 animate-rotating-gradient text-foreground after:absolute after:inset-[2px] after:z-0 after:rounded-[calc(var(--radius-lg)-2px)] after:bg-background after:content-[''] motion-reduce:animate-none motion-reduce:[background:conic-gradient(#A3E635,#F1F5F9,#A3E635)]! active:scale-[0.98] active:opacity-90",
       },
       size: {
         default:
@@ -53,7 +53,7 @@ function Button({
 }: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
   const gradientStyle: React.CSSProperties | undefined =
     variant === "gradient"
-      ? { background: "conic-gradient(from var(--r), #FFC800, #FFFFFF, #FFC800)" }
+      ? { background: "conic-gradient(from var(--r), #A3E635, #F1F5F9, #A3E635)" }
       : undefined
 
   return (

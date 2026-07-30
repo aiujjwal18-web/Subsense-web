@@ -132,20 +132,20 @@ export const GlowingEffect = memo(
               "--active": "0.5",
               "--glowingeffect-border-width": `${borderWidth}px`,
               "--repeating-conic-gradient-times": "5",
-              // Amber-only tonal ring — brand-consistent instead of the
+              // Lime + near-white tonal ring — brand-consistent instead of the
               // reference's 4 unrelated decorative hex values (pink/gold/
               // green/blue), while keeping the same 4-stop conic structure.
-              "--gradient": `radial-gradient(circle, #FFC800 10%, #FFC80000 20%),
-                radial-gradient(circle at 40% 40%, #FFFFFF 5%, #FFFFFF00 15%),
-                radial-gradient(circle at 60% 60%, #FFC800 10%, #FFC80000 20%),
-                radial-gradient(circle at 40% 60%, #FFFFFF 10%, #FFFFFF00 20%),
+              "--gradient": `radial-gradient(circle, #A3E635 10%, #A3E63500 20%),
+                radial-gradient(circle at 40% 40%, #F1F5F9 5%, #F1F5F900 15%),
+                radial-gradient(circle at 60% 60%, #A3E635 10%, #A3E63500 20%),
+                radial-gradient(circle at 40% 60%, #F1F5F9 10%, #F1F5F900 20%),
                 repeating-conic-gradient(
                   from 236.84deg at 50% 50%,
-                  #FFC800 0%,
-                  #FFFFFF calc(25% / var(--repeating-conic-gradient-times)),
-                  #FFC800 calc(50% / var(--repeating-conic-gradient-times)),
-                  #FFFFFF calc(75% / var(--repeating-conic-gradient-times)),
-                  #FFC800 calc(100% / var(--repeating-conic-gradient-times))
+                  #A3E635 0%,
+                  #F1F5F9 calc(25% / var(--repeating-conic-gradient-times)),
+                  #A3E635 calc(50% / var(--repeating-conic-gradient-times)),
+                  #F1F5F9 calc(75% / var(--repeating-conic-gradient-times)),
+                  #A3E635 calc(100% / var(--repeating-conic-gradient-times))
                 )`,
             } as React.CSSProperties
           }
