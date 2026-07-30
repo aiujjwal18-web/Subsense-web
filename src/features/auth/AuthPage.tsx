@@ -2,7 +2,6 @@ import { useState, type FormEvent } from "react"
 import { Eye, EyeOff } from "lucide-react"
 import { Link, Navigate } from "react-router-dom"
 
-import { KineticText } from "@/components/brand/KineticText"
 import { LogoIcon } from "@/components/brand/LogoIcon"
 import { SparklesCore } from "@/components/ui/sparkles"
 import { Button } from "@/components/ui/button"
@@ -163,58 +162,23 @@ export function AuthPage() {
       </div>
 
       <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col items-center gap-16 lg:flex-row lg:items-center lg:justify-between">
-        {/* Hero — standalone brand messaging, not a card header */}
-        <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
-          <div className="flex items-center gap-4">
-            <LogoIcon className="size-16 shrink-0" />
-            {/* Two instances, not one — reads as a single continuously-typed
-                word via hideCursorOnComplete on "Sub" (see KineticText.tsx),
-                so its cursor disappears at the exact instant "Sense" starts
-                rather than fading over it. whitespace-nowrap keeps the pair
-                as one flex item so the row's gap-4 doesn't insert a gap
-                between them. */}
-            <span className="whitespace-nowrap">
-              <KineticText
-                text="Sub"
-                effect="typewriter"
-                speed={0.065}
-                hideCursorOnComplete
-                className="font-heading text-5xl font-semibold text-primary"
-              />
-              <KineticText
-                text="Sense"
-                effect="typewriter"
-                speed={0.065}
-                startDelay={3 * 0.065}
-                className="font-heading text-5xl font-semibold text-foreground"
-              />
+        {/* Hero — standalone brand messaging, not a card header. LogoIcon
+            sits outside the centered column so the wordmark and tagline
+            center against each other's own width, not the icon+wordmark
+            row's combined width. */}
+        <div className="flex items-center gap-4">
+          <LogoIcon className="size-16 shrink-0 self-start" />
+          <div className="flex flex-col items-center">
+            <span className="whitespace-nowrap font-heading text-5xl font-semibold">
+              <span className="text-primary">Sub</span>
+              <span className="bg-[linear-gradient(45deg,var(--primary),var(--secondary-accent))] bg-clip-text text-transparent">
+                Sense
+              </span>
             </span>
-          </div>
-          {/* pl-20 = icon (size-16 = 4rem) + gap-4 (1rem), so this lines up
-              under the wordmark's left edge, not the icon's. startDelay
-              hands off from the wordmark's own typing (8 chars × 0.065s ≈
-              0.52s) plus a ~0.5s pause — unchanged, since the wordmark's
-              total typing time is the same whether typed as one instance or
-              two sequenced ones. Two instances here too, same reasoning as
-              the wordmark above: a real space (not a trailing space baked
-              into either string, which default whitespace-collapsing could
-              silently eat) sits between them so it reads as one sentence. */}
-          <div className="mt-5 max-w-sm lg:pl-20">
-            <KineticText
-              text="Track smarter."
-              effect="typewriter"
-              speed={0.035}
-              startDelay={1}
-              hideCursorOnComplete
-              className="text-base text-foreground/70"
-            />{" "}
-            <KineticText
-              text="Renew wiser."
-              effect="typewriter"
-              speed={0.035}
-              startDelay={1 + 14 * 0.035}
-              className="text-base text-primary"
-            />
+            <p className="mt-5 max-w-sm text-center text-base">
+              <span className="text-foreground/70">Think wiser.</span>{" "}
+              <span className="text-primary">Choose smarter.</span>
+            </p>
           </div>
         </div>
 

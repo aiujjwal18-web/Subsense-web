@@ -11,7 +11,9 @@ export function Logo({ className }: LogoProps) {
       <LogoIcon className="size-9 shrink-0" />
       <span className="font-display text-lg font-semibold">
         <span className="text-primary">Sub</span>
-        <span className="text-foreground">Sense</span>
+        <span className="bg-[linear-gradient(45deg,var(--primary),var(--secondary-accent))] bg-clip-text text-transparent">
+          Sense
+        </span>
       </span>
     </div>
   )
