@@ -28,6 +28,85 @@ Two things keep this current automatically:
 
 ---
 
+## 2026-07-30 — AuthPage.tsx follow-up: Google button radius + hero/card gap
+
+**Prompt:**
+Two live-screenshot-driven fixes on `AuthPage.tsx`, neither part of the DEC-056 retirement scope: (1) the "Continue with Google" button rendered with a pill/near-circular radius while every other element on the card uses the standard `rounded-lg` — investigate what's driving it and confirm whether a documented reason (e.g. Google OAuth branding guidelines) requires it before changing; (2) a large, unbalanced empty-canvas gap between the wordmark/tagline (left) and the sign-in card (right) at standard desktop width, more noticeable now that the particle background and glass-morphism effects are gone — investigate the actual layout mechanism (flex/grid structure, max-width, the `lg:mr-8`/`xl:mr-16` margin flagged as a likely contributor) and propose a tightened version, without reintroducing any new visual element.
+
+Investigated directly by reading the current file (small, single-file, well-scoped change — no exploration agents needed). Finding 1: `rounded-full` was a plain, hand-added className override on this one button, not driven by any component/prop/token; grepped the whole codebase for any comment or doc referencing Google's branding guidelines and found none — confirmed as an unexamined leftover, not a documented exception, before removing it. Finding 2: the row's `lg:justify-between` (not just the card's margin) was the primary driver — it anchors the two halves to opposite ends of a `max-w-6xl` (1152px) container and dumps all ~350px of leftover space into the middle gap, reducing the row's own `gap-16` to an inert minimum-floor value with no real effect; the card wrapper's `lg:mr-8 xl:mr-16` compounded this by pulling the card further from the hero, despite the page's own `lg:px-16 xl:px-20` outer padding already providing ample edge breathing room, making that margin redundant.
+
+**What was done:**
+- `src/features/auth/AuthPage.tsx`: removed `rounded-full` from the Google button's className (now inherits the standard `rounded-lg` from `buttonVariants`' base cva string, matching every other element on the card).
+- Changed the hero/card row's `lg:justify-between` → `lg:justify-center`, so the two halves pack together using the row's existing `gap-16` (64px) and center as one unit, instead of being edge-anchored with an unpredictable leftover-space gap. Removed the now-redundant `lg:mr-8 xl:mr-16` from the card wrapper (and its obsolete "offset right" comment), since edge spacing is already covered by the outer container's own padding and this margin only widened the gap it was meant to be replacing.
+
+**Verification:**
+- `npx tsc -b` — clean.
+- `npx eslint .` — same 4 pre-existing baseline errors, no new ones.
+- `npm run build` (fresh `dist/`) — clean.
+- Grep confirmed `rounded-full` no longer appears on the Google button (the only remaining hit is the unrelated `pillTabTriggerClass()` Sign in/Create account tab toggles, correctly untouched) and `lg:mr-8`/`xl:mr-16` are fully gone from the file.
+- No live-browser verification available in this environment (standing gap, flagged rather than claimed). Live checklist for later: Google button's radius now matches the rest of the card; the hero/card gap at standard desktop width reads as a deliberate, moderate 64px gap rather than a stark void, without either half looking cramped against the viewport edge; mobile/tablet stacked layout (unaffected by this change, since it never used `lg:justify-between`) still looks correct.
+
+**Commit:** `67fedc0` — "AuthPage polish: fix Google button radius mismatch and hero/card gap"
+
+---
+
+## 2026-07-30 — Retire DEC-056 pre-authentication visual exception
+
+**Prompt:**
+Retire the remaining pieces of DEC-056's scoped pre-auth visual exception (`AuthPage.tsx`, `ForgotPasswordPage.tsx`, `ResetPasswordPage.tsx`), now that the Cyber Lime reskin has shipped: the animated particle background (`SparklesCore`), the glass-morphism sign-in card (28px radius, corner glow, sheen overlays, `text-shadow-lg`), and the custom pill-shaped `InteractiveHoverButton` CTA. The wordmark/tagline half of DEC-056 was already retired during the reskin (static text, `KineticText.tsx` deleted) — explicitly out of scope here, untouched.
+
+Investigated before planning, per `superpowers`: confirmed `SparklesCore` is used only by these 3 screens (zero other consumers); confirmed `InteractiveHoverButton` is used only by `AuthPage.tsx`'s 2 submit buttons — `ForgotPasswordPage`/`ResetPasswordPage` already used standard `Button` with the `default` variant, untouched by this part of DEC-056; confirmed "standard card" isn't actually one consistent pattern in the shipped app — Dashboard/Details sections (9 instances) use a fully opaque `rounded-lg border border-border bg-card p-6`, while only `SubscriptionCard.tsx`'s individual tile uses `bg-card/70 backdrop-blur-md`, despite a CLAUDE.md note framing glass-morphism as the default for every card.
+
+Three things were resolved with the user via `AskUserQuestion` rather than assumed: (1) the 3 pre-auth cards converge on the **opaque** `bg-card` majority pattern, not the translucent one — a full-page auth card is structurally a page-level container like Dashboard/Details sections, not a repeated list tile; (2) AuthPage's two CTAs get `variant="gradient"` (matching `TopBarActions`/`AddSubscriptionPage`'s actual primary-CTA treatment), accepting as a known, explicitly-scoped consequence that `ForgotPasswordPage`/`ResetPasswordPage`'s own submit buttons stay `variant="default"`, since the brief only asked to retire AuthPage's `InteractiveHoverButton` specifically; (3) the 3 now-unused `@tsparticles/*` npm packages are removed from `package.json` along with `sparkles.tsx` itself, not just left installed.
+
+Plan review caught one more thing before approval: Part 2's card treatment matched the majority's opacity/blur/shadow/radius/border but silently kept `p-8` instead of the majority's `p-6`. Confirmed as a deliberate exception, not an oversight, and made explicit in the plan: padding isn't one of this project's locked brand tokens (only color/typography/radius/motion are), and the "standard" cards don't already share one padding value — `SubscriptionCard.tsx` tiles use `p-5`, page-level Dashboard/Details sections use `p-6` — so padding already varies by a card's role. A pre-auth card is a single, standalone focal element on an otherwise-empty page, structurally closer to a centered dialog than a dense in-page section, justifying `p-8`'s extra breathing room.
+
+**What was done:**
+- `src/features/auth/AuthPage.tsx`: removed the `SparklesCore` import and its wrapping `absolute inset-0` layer. Collapsed the 4-layer nested glass-card structure (`relative` wrapper → corner-glow div → `rounded-[28px]` card → top-sheen div → diagonal-sheen div → `relative z-10 text-shadow-lg` content wrapper) down to one `rounded-lg border border-border bg-card p-8 text-center` card, with a comment recording why `p-8` (not `p-6`) is deliberate. Replaced both `InteractiveHoverButton` call sites (Sign in / Create account submit buttons) with standard `Button variant="gradient"`, moving each button's `text` prop content into JSX children.
+- `src/features/auth/ForgotPasswordPage.tsx` + `src/features/auth/ResetPasswordPage.tsx`: removed the `SparklesCore` import and its wrapping layer; simplified each card's className from `rounded-lg border border-border bg-card/85 p-8 text-center shadow-2xl shadow-black/40 backdrop-blur-md` to `rounded-lg border border-border bg-card p-8 text-center` (dropped translucency, blur, and shadow; kept radius/border/padding, which already matched standard).
+- Deleted `src/components/ui/sparkles.tsx` and `src/components/ui/interactive-hover-button.tsx` (confirmed zero remaining consumers for both).
+- Removed `@tsparticles/engine`, `@tsparticles/react`, `@tsparticles/slim` from `package.json`; ran `npm install` to regenerate `package-lock.json` (41 packages removed).
+- **Flagged, not fixed**: CLAUDE.md's "Approved exception: @tsparticles/react, ..." note and its "glass-morphism is now the default for every card" note both describe state that no longer matches the shipped app after this change — left as-is per this project's convention of deferring doc updates until code ships and is live-verified.
+
+**Verification:**
+- `npx tsc -b` — clean.
+- `npx eslint .` — same 4 pre-existing `react-refresh/only-export-components` baseline errors, no new ones.
+- `npm run build` (fresh `dist/`) — clean; JS bundle dropped from ~967KB to ~890KB, consistent with the tsparticles removal actually taking effect (not just a dead import).
+- Grep confirmed zero remaining `SparklesCore`/`sparkles`/`InteractiveHoverButton`/`tsparticles` references anywhere in `src/` or `package.json`; all three cards read the identical standard classString; `variant="gradient"` appears at exactly AuthPage's 2 CTA call sites, nowhere else.
+- No live-browser verification available in this environment (standing gap, flagged rather than claimed). Live checklist for later: flat canvas renders with no particle artifacts; opaque card reads fine with no glow/sheen compensation; wordmark/tagline/form column stays exactly as centered as before; AuthPage's gradient CTA doesn't read as jarringly mismatched against ForgotPassword/ResetPassword's default-variant CTAs during normal navigation.
+
+**Commit:** `59d3ccd` (part 1: remove particle background + tsparticles deps) — `f818509` (part 2: standard opaque card) — `202da13` (part 3: standard Button variant=gradient on AuthPage CTAs)
+
+---
+
+## 2026-07-30 — Cyber Lime brand-kit reskin (v2, supersedes DEC-057/058 "Ledger Dark"→amber kit)
+
+**Prompt:**
+Full token-level reskin replacing the amber "Ledger Dark" kit with a new "Cyber Lime" kit: `#A3E635` primary (was `#FFC800`), reintroduced two-tier surfaces (`#121212`/`#1A1A1E`, previously collapsed to one `#0B0C0E` value), solid-hex borders (`#2A2A2E`/`#3A3A3F`, previously alpha-white), a new Cool Steel Blue `#38BDF8` "Secondary Accent" role, updated text tokens (`#F1F5F9`/`#94A3B8`), a 45° lime→blue gradient scoped to the wordmark's "Sense" text on the three pre-auth screens only, and a tagline copy change ("Track smarter. Renew wiser." → "Think wiser. Choose smarter."). Status colors (amber/green/red/gray) explicitly untouched per the brief. Investigation-first per `superpowers`: full-codebase color-token/hardcoded-hex inventory (2 parallel Explore agents) before any plan, confirming exactly where every token lives, which components hardcode hex instead of referencing tokens, and where the wordmark/tagline/logo-icon actually render.
+
+Several things the brief didn't explicitly cover were resolved with the user via `AskUserQuestion` before finalizing the plan, not guessed: (1) the button gradient ring / BorderBeam / GlowingEffect ring — which currently pair amber+white and aren't named in the brief — pair lime with Primary Text (`#F1F5F9`), keeping blue exclusive to the wordmark and status/interactive uses; (2) the new Disabled/Inactive token (`#334155`) is added to `index.css` for future use but existing `disabled:opacity-50` states are left as-is (confirmed uniform across Button/Input/Select/Tabs/dropdown items, no component renders an explicit disabled fill); (3) `--primary-active`/`--chart-4`, a stray unused `#1E40AF` blue leftover from before the amber kit, are removed outright; (4) Text Muted (`--muted-foreground-2`) stays unchanged, but the hover-surface tier (`--muted`/`--sidebar-accent`) gets a new inferred value (`#242428`, up from `#141517`) since the new Surface 1 (`#121212`) sat too close to the old value to remain visibly distinct as a hover state — flagged as inferred/needs-live-check, same treatment as Border Strong (`#3A3A3F`, also inferred per the brief's own note).
+
+Plan review caught three more things before approval: (1) the investigation didn't explicitly confirm status colors are never used as full-surface fills, as the original brief asked — added an explicit confirmation section to the plan (grep-verified: every status-color usage is opacity-scoped `/10`–`/25` or confined to a small badge/chip, never a full card/section background). (2) The Secondary button rewrite (persistent lime border+fill, per the brief) initially dropped the existing `active:bg-card` press state entirely — fixed to keep a distinct three-step progression (base `0.08` → hover `0.14` → active `0.20` alpha), mirroring how the `destructive` variant in the same file already progresses. (3) New scope pulled forward from the next session's DEC-056 retirement agenda item: `AuthPage.tsx`'s wordmark/tagline drop the `KineticText` typewriter animation entirely in favor of plain static text — simpler than fighting the animated cursor's `bg-current` inheritance against the gradient text's `text-transparent`, and resolves part of an already-open "static vs. animated" question. Confirmed via grep that `AuthPage.tsx` was `KineticText.tsx`'s only consumer anywhere in the codebase before deleting the component outright (same pattern as `GradientButton.tsx`'s deletion last session), confirmed with the user via `AskUserQuestion` first rather than deleted silently.
+
+**What was done:**
+- `src/index.css`: full `:root`/`.dark` token rewrite (both kept in sync) — `--primary` amber→lime, `--card`/`--sidebar` split into Surface 1 (`#121212`), `--popover` promoted to a distinct Surface 2 (`#1A1A1E`, backs dropdown-menu/select/dialog), `--border`/`--input`/`--sidebar-border` alpha-white→solid `#2A2A2E`, new `--border-strong: #3A3A3F`, `--foreground`/`--card-foreground`/`--popover-foreground`/`--sidebar-foreground` → `#F1F5F9`, `--muted-foreground` → `#94A3B8`, `--muted`/`--sidebar-accent` → `#242428`, `--accent`/`--ring`/`--sidebar-ring` hue-swapped to lime at their existing alpha values, `--secondary`/`--secondary-foreground` repurposed for the new persistent Secondary CTA fill/text. Added `--secondary-accent: #38BDF8` and `--disabled: #334155` plus their `@theme inline` mappings. Removed the dead `--primary-active`/`--chart-4` tokens and mappings. Status colors (`--chart-1/2/3/5`, `--destructive`) and all `@property`/`@keyframes` mechanics left untouched.
+- `src/components/ui/button.tsx`: gradient variant's two hardcoded hex occurrences (`motion-reduce` fallback + inline `gradientStyle`) recolored amber/white → lime/near-white. Secondary variant rewritten from hover-only neutral emphasis to a persistent lime border+fill with a 3-step hover/active progression.
+- `src/components/ui/border-beam.tsx` + `src/components/shell/AppLayout.tsx`: hardcoded `colorFrom`/`colorTo` defaults and call-site props recolored to lime/near-white.
+- `src/components/subscriptions/GlowingEffect.tsx`: all 9 hardcoded amber/white hex stops (including 2 zero-alpha variants) in the `--gradient` custom property recolored to lime/near-white.
+- `src/components/brand/Logo.tsx`: "Sense" span recolored from `text-foreground` to a 45° lime→blue `bg-clip-text` gradient (tokens, not literal hex).
+- `src/features/auth/AuthPage.tsx`: removed the `KineticText` import and both animated blocks; wordmark and tagline now render as static markup — "Sub" plain lime text, "Sense" the same gradient treatment as `Logo.tsx`, tagline copy updated to "Think wiser. Choose smarter." with the same neutral/accent color split as before.
+- Deleted `src/components/brand/KineticText.tsx` (confirmed zero remaining consumers via grep, confirmed with the user before deleting).
+
+**Verification:**
+- `npx tsc -b` — clean.
+- `npx eslint .` — same 4 pre-existing `react-refresh/only-export-components` baseline errors, no new ones.
+- `npm run build` (fresh `dist/`) — clean. Grep confirmed zero remaining `#FFC800`/amber-`rgba(255,200,0,` in `src/`, zero remaining `--primary-active`/`--chart-4`/`KineticText` references anywhere. One benign pre-existing artifact found and flagged, not fixed: the built CSS still contains a handful of dead, never-applied utility classes generated from literal old-amber class strings quoted inside this very log's own history entries (e.g. line ~383 below) — Tailwind v4's default content scanner reads the whole repo, including markdown, and generates CSS for anything that looks like a class name even if no live component uses it. Doesn't affect runtime (no element carries those classes) and predates this session; flagging rather than silently ignoring or scope-creeping into a Tailwind content-glob config change.
+- No live-browser verification available in this environment (standing project gap, flagged rather than claimed). Live checklist for later: Surface 1 vs. Surface 2 read as distinct tiers; the new `#242428` hover-surface tier is actually visible against Surface 1; Border Strong reads as a real emphasis step; the Secondary CTA's persistent lime treatment on TopBarActions' Search/Notifications buttons doesn't read as too loud next to the Primary gradient CTA, and its hover/active states read as three distinct steps; the static wordmark's lime→blue gradient is legible on all three pre-auth screens; focus rings read clearly in lime; no contrast violations where primary fills carry text.
+
+**Commit:** `4d5c532` (part 1: index.css token rewrite) — `56c864b` (part 2: recolor gradient button/Border Beam/GlowingEffect) — `f02e720` (parts 5-6: static wordmark/tagline, gradient on Sense, delete KineticText)
+
+---
+
 ## 2026-07-29 — Card-level Paid/Paused quick-actions on SubscriptionCard
 
 **Prompt:**
@@ -913,3 +992,21 @@ Implement Phase 2 (Authentication and Profile) for SubSense per 16_Implementatio
 **Commit logged:** `a6e24ed` — "Fold GradientButton into buttonVariants "gradient", fix rotation bug, apply to CTAs" (2026-07-29 20:04) — 6 files changed, 21 insertions(+), 68 deletions(-)
 
 **Commit logged:** `679aecb` — "Card-level Paid/Paused/Resume quick-actions on SubscriptionCard" (2026-07-29 20:04) — 7 files changed, 401 insertions(+), 49 deletions(-)
+
+**Commit logged:** `795c638` — "Log commit trailers for b4a3735, 9a4d691, a6e24ed, 679aecb (Border Beam/glow-card, gradient-button, Paid/Paused)" (2026-07-29 20:05) — 1 file changed, 8 insertions(+)
+
+**Commit logged:** `5b46168` — "Add .gitattributes enforcing LF line endings, renormalize tracked files" (2026-07-29 20:17) — 6 files changed, 7510 insertions(+), 7509 deletions(-)
+
+**Commit logged:** `4d5c532` — "Cyber Lime reskin: full token rewrite in index.css (item 8, part 1)" (2026-07-30 20:44) — 1 file changed, 52 insertions(+), 52 deletions(-)
+
+**Commit logged:** `56c864b` — "Cyber Lime reskin: recolor gradient button, Border Beam, GlowingEffect (item 8, part 2)" (2026-07-30 20:45) — 4 files changed, 16 insertions(+), 16 deletions(-)
+
+**Commit logged:** `f02e720` — "Cyber Lime reskin: static wordmark/tagline, gradient on Sense, delete KineticText (item 8, parts 5-6)" (2026-07-30 21:00) — 3 files changed, 19 insertions(+), 314 deletions(-)
+
+**Commit logged:** `59d3ccd` — "Retire DEC-056: remove particle background + tsparticles dependencies (item 9, part 1)" (2026-07-30 21:14) — 6 files changed, 731 deletions(-)
+
+**Commit logged:** `f818509` — "Retire DEC-056: standard opaque card on all 3 pre-auth screens (item 9, part 2)" (2026-07-30 21:17) — 3 files changed, 8 insertions(+), 40 deletions(-)
+
+**Commit logged:** `202da13` — "Retire DEC-056: standard Button variant=gradient on AuthPage CTAs (item 9, part 3)" (2026-07-30 21:21) — 2 files changed, 10 insertions(+), 43 deletions(-)
+
+**Commit logged:** `67fedc0` — "AuthPage polish: fix Google button radius mismatch and hero/card gap" (2026-07-30 21:22) — 1 file changed, 3 insertions(+), 3 deletions(-)
