@@ -4,7 +4,6 @@ import { Link, Navigate } from "react-router-dom"
 
 import { LogoIcon } from "@/components/brand/LogoIcon"
 import { Button } from "@/components/ui/button"
-import { InteractiveHoverButton } from "@/components/ui/interactive-hover-button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -239,12 +238,14 @@ export function AuthPage() {
                             </Link>
                           </div>
                           {formError && <p className="text-sm text-destructive">{formError}</p>}
-                          <InteractiveHoverButton
+                          <Button
                             type="submit"
+                            variant="gradient"
                             disabled={submitting}
-                            text={submitting ? "Signing in…" : "Sign in"}
                             className="w-full"
-                          />
+                          >
+                            {submitting ? "Signing in…" : "Sign in"}
+                          </Button>
                         </form>
                       </TabsContent>
 
@@ -287,12 +288,14 @@ export function AuthPage() {
                             />
                           </div>
                           {formError && <p className="text-sm text-destructive">{formError}</p>}
-                          <InteractiveHoverButton
+                          <Button
                             type="submit"
+                            variant="gradient"
                             disabled={submitting}
-                            text={submitting ? "Creating account…" : "Create account"}
                             className="w-full"
-                          />
+                          >
+                            {submitting ? "Creating account…" : "Create account"}
+                          </Button>
                         </form>
                       </TabsContent>
                     </Tabs>
