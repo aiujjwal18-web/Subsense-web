@@ -26,7 +26,7 @@ export function ForgotPasswordPage() {
 
   return (
     <div className="relative flex min-h-screen items-center overflow-hidden bg-background px-6 py-16 lg:justify-end lg:px-16 lg:pr-16 xl:pr-24">
-      <div className="relative z-10 w-full max-w-sm rounded-lg border border-border bg-card/85 p-8 text-center shadow-2xl shadow-black/40 backdrop-blur-md">
+      <div className="relative z-10 w-full max-w-sm rounded-lg border border-border bg-card p-8 text-center">
         <Logo className="justify-center" />
 
         {submitted ? (

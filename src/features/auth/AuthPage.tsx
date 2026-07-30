@@ -162,43 +162,13 @@ export function AuthPage() {
           </div>
         </div>
 
-        {/* Sign-in card — offset right, with real breathing room from the edge */}
+        {/* Sign-in card. p-8 (not the standard p-6) is deliberate: this card
+            is a single, standalone focal element on an otherwise-empty page,
+            closer to a centered dialog than a dense in-page section — see
+            BUILD_LOG. */}
         <div className="w-full max-w-sm shrink-0 lg:mr-8 xl:mr-16">
-          <div className="relative">
-            {/* Corner glow — the actual "glass" cue; blur alone barely reads
-                against this dark a background. Sits outside the card's own
-                overflow-hidden so it can bleed past the rounded edge. */}
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute -top-10 -left-10 -z-10 size-56 rounded-full bg-primary/30 blur-3xl"
-            />
-
-            {/* rounded-[28px]: a deliberate, one-off departure from the
-                app's 8px radius standard (DEC-049) for this card only —
-                not routed through --radius, so it won't drift if that
-                token ever changes. To be recorded as a login-page visual
-                exception, not applied anywhere else. */}
-            <div className="relative overflow-hidden rounded-[28px] border border-border-strong bg-card/15 p-8 text-center shadow-2xl shadow-black/40">
-              {/* Crisp top-edge highlight, separate from the ambient corner
-                  glow above — a thin bright line fading toward both
-                  corners, the classic "glass pane" edge cue. */}
-              <div
-                aria-hidden="true"
-                className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/70 to-transparent"
-              />
-
-              {/* Diagonal glass sheen */}
-              <div
-                aria-hidden="true"
-                className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-transparent"
-              />
-
-              {/* text-shadow-lg compensates for the much lower card alpha
-                  above — inherited by every descendant text node (labels,
-                  tab text, button labels) rather than annotated one by
-                  one, since text-shadow is an inherited CSS property. */}
-              <div className="relative z-10 text-shadow-lg">
-                {checkEmail ? (
+          <div className="rounded-lg border border-border bg-card p-8 text-center">
+            {checkEmail ? (
                   <div>
                     <p className="text-sm text-muted-foreground">
                       Check your email to confirm your account.
@@ -344,8 +314,6 @@ export function AuthPage() {
                     </Button>
                   </>
                 )}
-              </div>
-            </div>
           </div>
         </div>
       </div>
