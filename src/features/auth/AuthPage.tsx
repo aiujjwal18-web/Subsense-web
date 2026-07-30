@@ -140,7 +140,7 @@ export function AuthPage() {
 
   return (
     <div className="relative flex min-h-screen items-center overflow-hidden bg-background px-6 py-16 sm:px-10 lg:px-16 xl:px-20">
-      <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col items-center gap-16 lg:flex-row lg:items-center lg:justify-between">
+      <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col items-center gap-16 lg:flex-row lg:items-center lg:justify-center">
         {/* Hero — standalone brand messaging, not a card header. LogoIcon
             sits outside the centered column so the wordmark and tagline
             center against each other's own width, not the icon+wordmark
@@ -165,7 +165,7 @@ export function AuthPage() {
             is a single, standalone focal element on an otherwise-empty page,
             closer to a centered dialog than a dense in-page section — see
             BUILD_LOG. */}
-        <div className="w-full max-w-sm shrink-0 lg:mr-8 xl:mr-16">
+        <div className="w-full max-w-sm shrink-0">
           <div className="rounded-lg border border-border bg-card p-8 text-center">
             {checkEmail ? (
                   <div>
@@ -309,7 +309,7 @@ export function AuthPage() {
                     <Button
                       type="button"
                       variant="outline"
-                      className="mt-6 w-full rounded-full"
+                      className="mt-6 w-full"
                       onClick={() => signInWithGoogle()}
                     >
                       <GoogleIcon />
