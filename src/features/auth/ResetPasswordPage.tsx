@@ -2,7 +2,6 @@ import { useState, type FormEvent } from "react"
 import { useNavigate } from "react-router-dom"
 
 import { Logo } from "@/components/brand/Logo"
-import { SparklesCore } from "@/components/ui/sparkles"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -41,10 +40,6 @@ export function ResetPasswordPage() {
 
   return (
     <div className="relative flex min-h-screen items-center overflow-hidden bg-background px-6 py-16 lg:justify-end lg:px-16 lg:pr-16 xl:pr-24">
-      <div className="pointer-events-none absolute inset-0">
-        <SparklesCore id="reset-password-sparkles" className="h-full w-full" />
-      </div>
-
       <div className="relative z-10 w-full max-w-sm rounded-lg border border-border bg-card/85 p-8 text-center shadow-2xl shadow-black/40 backdrop-blur-md">
         <Logo className="justify-center" />
         <p className="mt-2 text-sm text-muted-foreground">Choose a new password.</p>

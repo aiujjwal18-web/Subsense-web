@@ -3,7 +3,6 @@ import { Eye, EyeOff } from "lucide-react"
 import { Link, Navigate } from "react-router-dom"
 
 import { LogoIcon } from "@/components/brand/LogoIcon"
-import { SparklesCore } from "@/components/ui/sparkles"
 import { Button } from "@/components/ui/button"
 import { InteractiveHoverButton } from "@/components/ui/interactive-hover-button"
 import { Input } from "@/components/ui/input"
@@ -142,25 +141,6 @@ export function AuthPage() {
 
   return (
     <div className="relative flex min-h-screen items-center overflow-hidden bg-background px-6 py-16 sm:px-10 lg:px-16 xl:px-20">
-      <div className="pointer-events-none absolute inset-0">
-        {/* Single uniform layer across the whole page — a prior pass added a
-            second, denser instance layered specifically behind the hero+card
-            row to boost visibility there, but two differently-tuned layers
-            created a visible density seam/band across the middle of the
-            page. One layer, tuned moderately brighter/denser than the
-            original subtle default, reads evenly everywhere and still shows
-            through the now-much-more-transparent card and logo. */}
-        <SparklesCore
-          id="auth-sparkles"
-          className="h-full w-full"
-          particleDensity={110}
-          minSize={0.8}
-          maxSize={1.8}
-          minOpacity={0.2}
-          maxOpacity={0.9}
-        />
-      </div>
-
       <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col items-center gap-16 lg:flex-row lg:items-center lg:justify-between">
         {/* Hero — standalone brand messaging, not a card header. LogoIcon
             sits outside the centered column so the wordmark and tagline
