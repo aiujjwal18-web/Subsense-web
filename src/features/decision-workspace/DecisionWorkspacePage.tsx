@@ -123,16 +123,9 @@ export function DecisionWorkspacePage() {
   const totals = computeTotalsByCurrency(rows)
 
   const upcomingRenewals = [...rows]
-    .filter((row) => row.lifecycle_status !== "paused")
+    .filter((row) => row.lifecycle_status !== "paused") // DEC-064: paused excluded here as before
+    .filter((row) => computeRenewalUrgency(row.next_renewal_date, row.lifecycle_status) !== "normal") // DEC-054/DEC-039: overdue/critical/upcoming only, drop >7-day normal tier
     .sort((a, b) => a.next_renewal_date.localeCompare(b.next_renewal_date))
-    .slice(0, 5)
-
-  const recommendedReviews = rows
-    .filter((row) => {
-      if (row.lifecycle_status === "paused") return false
-      const urgency = computeRenewalUrgency(row.next_renewal_date, row.lifecycle_status)
-      return urgency !== "normal" || row.lifecycle_status === "review_due"
-    })
     .slice(0, 5)
 
   return (
@@ -236,27 +229,13 @@ export function DecisionWorkspacePage() {
         </section>
 
         {/* Recommended Reviews */}
-        <section className="relative mt-6 rounded-lg border border-border bg-card p-6">
-          <GlowingEffect glow disabled={false} spread={30} proximity={48} borderWidth={2} />
+        <section className="mt-6 rounded-lg border border-border bg-card p-6">
           <h2 className="font-heading text-sm font-semibold text-foreground">
             Recommended Reviews
           </h2>
-          {recommendedReviews.length === 0 ? (
-            <p className="mt-2 text-sm text-muted-foreground">
-              Nothing needs your attention right now.
-            </p>
-          ) : (
-            <div className="mt-3 divide-y divide-border">
-              {recommendedReviews.map((row, index) => (
-                <motion.div key={row.id} {...staggerItemMotion(index)}>
-                  <SubscriptionListItem
-                    row={row}
-                    onClick={() => navigate(`/subscriptions/${row.id}`)}
-                  />
-                </motion.div>
-              ))}
-            </div>
-          )}
+          <p className="mt-2 text-sm text-muted-foreground">
+            Recommended reviews will appear here once there's something worth your attention.
+          </p>
         </section>
 
         {/* Shared Payment Activity */}
