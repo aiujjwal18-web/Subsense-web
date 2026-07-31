@@ -28,6 +28,31 @@ Two things keep this current automatically:
 
 ---
 
+## 2026-07-31 — Fix Decision Workspace: Upcoming Renewals 7-day window, Recommended Reviews placeholder
+
+**Prompt:**
+Live-reviewing the Decision Workspace screen surfaced two real bugs, both scoped to `DecisionWorkspacePage.tsx`: "Recommended Reviews" was re-showing the same populated subscription list as "Upcoming Renewals" (same rows, same badges, no distinct information) instead of the honest "not available yet" placeholder its Phase 7 (AI Decision Support / C-003 AI Decision Card) status calls for, matching the screen's other three not-yet-built sections; and "Upcoming Renewals" showed every active subscription regardless of how far out it renewed, with no urgency filter at all, defeating the screen's "what needs attention today" purpose. Investigate first, then build, then report the diff back before committing — don't push until reviewed and approved.
+
+Investigated by reading the file directly (both sections live in one file, no exploration agents needed): confirmed `upcomingRenewals` had zero urgency filtering (just paused-exclusion, sort, `slice(0,5)`) while `recommendedReviews` already filtered to `urgency !== "normal" OR review_due` — the two arrays were producing near-identical output with typical test data, confirming the duplication claim directly from the code, not assumed. Confirmed via BUILD_LOG's own 2026-07-29 DEC-064 entry that this was the shipped state since the paused-exclusion pass, unchanged since.
+
+Two sub-decisions were resolved via investigation before building, not assumed: (1) the 7-day cutoff reuses `computeRenewalUrgency` directly (`subscription-utils.ts:102-112` — DEC-054's overdue/critical(≤2d)/upcoming(≤7d)/normal thresholds, itself built on DEC-039's `seven_day` reminder window) rather than a second parallel date-diff check; (2) whether dropping the `recommendedReviews` array's `OR lifecycle_status === "review_due"` clause would silently hide a real signal — grepped every write path to `lifecycle_status` in the repo (`SubscriptionCard.tsx`'s pause/resume toggle only ever writes `active`/`paused`; `SubscriptionDetailsPage.tsx`'s archive handler only writes `archived`; `AddSubscriptionPage.tsx`'s insert never sets it at all) and confirmed nothing in this codebase ever sets `"review_due"` — same dormant-enum situation DEC-064 already flagged for `"renewal_confirmed"` — so no OR-clause was needed in the new filter. A first-draft placeholder copy naming "AI Decision Support" (the internal Phase 7 roadmap label) was caught and revised before shipping, since none of the three real placeholder siblings (AI Insights/Shared Payment Activity/Potential Savings) name an internal system or phase in their copy.
+
+**What was done:**
+- `src/features/decision-workspace/DecisionWorkspacePage.tsx`: `upcomingRenewals` gets a second `.filter()` reusing `computeRenewalUrgency(row.next_renewal_date, row.lifecycle_status) !== "normal"` on top of the existing paused-exclusion filter (kept explicit rather than relying on the incidental paused→normal short-circuit) — drops the >7-day "normal" tier while keeping overdue/critical/upcoming, "View all" untouched.
+- Deleted the `recommendedReviews` computed array entirely (dead code once the section stops rendering a list).
+- Replaced the "Recommended Reviews" section's populated-list JSX with the same plain placeholder pattern used by its three not-yet-built siblings (no `relative` wrapper, no `GlowingEffect` — those matched "Today's Financial Context," a section with real dynamic data, not the placeholder pattern): header kept, body copy `"Recommended reviews will appear here once there's something worth your attention."`, matching the siblings' plain, condition-based tone rather than naming the internal Phase 7/AI Decision Support label.
+
+**Verification:**
+- `npx tsc -b` — clean (both the build-then-review pass and the final pre-commit pass).
+- `npx eslint .` — same 4 pre-existing baseline errors (`badge.tsx`, `button.tsx`, `tabs.tsx`, `AuthContext.tsx`), no new ones — confirms `GlowingEffect`/`SubscriptionListItem`/`staggerItemMotion`/`RenewalUrgencyBadge` are all still legitimately used elsewhere in the file (by Upcoming Renewals and Today's Financial Context).
+- `npm run build` — clean, both passes.
+- Diff reviewed and approved by the user before committing, per the explicit plan-then-approve process this session used throughout.
+- Live dev-server check against real Supabase data, done by the user (not possible in this sandbox — no `.env`/Supabase credentials present here, flagged as such at the time): confirmed Netflix and JioSaavn (overdue/critical) still show in Upcoming Renewals; Spotify Premium and Amazon Prime (far-out renewals) correctly dropped; Recommended Reviews now reads as an honest placeholder, no duplicate data.
+
+**Commit:** `db27499` — "Fix Decision Workspace: filter Upcoming Renewals to 7-day window, placeholder for Recommended Reviews"
+
+---
+
 ## 2026-07-31 — Polish: lime logo icon recolor, rounded sidebar top-right corner
 
 **Prompt:**
@@ -1040,3 +1065,7 @@ Implement Phase 2 (Authentication and Profile) for SubSense per 16_Implementatio
 **Commit logged:** `88e3023` — "Update BUILD_LOG.md with real commit hashes for today's 3 entries" (2026-07-30 21:27) — 1 file changed, 97 insertions(+)
 
 **Commit logged:** `25505fc` — "Polish: recolor logo icon to Cyber Lime, round sidebar's top-right corner" (2026-07-31 16:00) — 3 files changed, 37 insertions(+), 1 deletion(-)
+
+**Commit logged:** `1982697` — "Update BUILD_LOG.md with real commit hash for logo/sidebar polish entry" (2026-07-31 16:00) — 1 file changed, 3 insertions(+), 1 deletion(-)
+
+**Commit logged:** `db27499` — "Fix Decision Workspace: filter Upcoming Renewals to 7-day window, placeholder for Recommended Reviews" (2026-07-31 19:12) — 1 file changed, 6 insertions(+), 27 deletions(-)
