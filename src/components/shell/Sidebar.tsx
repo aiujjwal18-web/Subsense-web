@@ -60,7 +60,15 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
         onMouseEnter={() => setHoverExpanded(true)}
         onMouseLeave={() => setHoverExpanded(false)}
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-transform duration-200 lg:static lg:translate-x-0",
+          // rounded-tr-lg: the sidebar spans full viewport height flush to the
+          // left/top/bottom edges on desktop (lg:static), so its top-right
+          // corner is the only one that doesn't sit on a page edge — it's
+          // where the solid bg-sidebar fill meets the transparent TopBar
+          // strip above and Main to the right. Rounded here to match the
+          // app's frozen 8px radius token (--radius, DEC-049) instead of
+          // reading as a hard, sharp interior corner against everything
+          // else in the app that already uses rounded-lg.
+          "fixed inset-y-0 left-0 z-50 flex flex-col rounded-tr-lg border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-transform duration-200 lg:static lg:translate-x-0",
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >

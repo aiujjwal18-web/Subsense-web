@@ -28,6 +28,32 @@ Two things keep this current automatically:
 
 ---
 
+## 2026-07-31 — Polish: lime logo icon recolor, rounded sidebar top-right corner
+
+**Prompt:**
+Verify and ship two small polish fixes already made directly on disk (not built by Claude Code this session — flagged as such and verified before shipping, not re-implemented): the logo icon PNG (`src/assets/subsense-logo-icon.png`) was recolored in place from amber to Cyber Lime (DEC-065) via an HSV hue-shift on the upper-S piece and its ambient glow, since it's a static raster asset that doesn't pick up token-driven reskins automatically; and `src/components/shell/Sidebar.tsx` got `rounded-tr-lg` added to its outer container to fix a hard, sharp interior corner where the sidebar's solid fill meets the transparent TopBar strip and Main — the only corner of the sidebar that doesn't sit flush on a page edge.
+
+Verification requested: confirm both diffs on disk match the described changes (not assumed), run `tsc`/`eslint`/`build`, check the changes live in a browser (sidebar corner in collapsed/hover-expanded/mobile-drawer states, logo icon at real in-app size across all its actual render sites), append this entry, then a single commit + immediate push (not split into phases — a two-file polish pass, not a multi-phase reskin).
+
+Mid-review, the consumer-count claim for the logo icon was independently re-verified via a direct grep of the three pre-auth pages' imports (not taken on faith) — corrected an earlier miscount that had misattributed `Logo.tsx` to `AuthPage.tsx`.
+
+**What was done:**
+- Verified `src/assets/subsense-logo-icon.png` (237438 → 283656 bytes, same dimensions/filename) by reading the image directly: upper-S piece and its ambient glow are now lime green (~83° hue, matching `--primary`/#A3E635), lower-S piece stays white, metallic bezel and black tile background untouched — matches the described HSV hue-shift. No component code changes needed; `LogoIcon.tsx` just imports the same file path.
+- Re-verified the icon's real consumer graph by grep (`grep -n "LogoIcon\|from \"@/components/brand/Logo\""` across `AuthPage.tsx`, `ForgotPasswordPage.tsx`, `ResetPasswordPage.tsx`): `LogoIcon` has 3 direct import sites — `TopBar.tsx` (main app header), `AuthPage.tsx` (its own sole logo-related import, standalone in the hero, no wordmark, does not also import `Logo.tsx`), and `Logo.tsx` itself (icon + wordmark). `Logo.tsx` is in turn imported by `ForgotPasswordPage.tsx` and `ResetPasswordPage.tsx` — not `AuthPage.tsx`. Real total: 4 render sites (TopBar, AuthPage, ForgotPasswordPage, ResetPasswordPage), all resolving to the same recolored PNG.
+- Verified `src/components/shell/Sidebar.tsx`'s diff: `rounded-tr-lg` added to the `motion.aside` container's `cn(...)` className, with an explanatory comment already in place, using the existing frozen `--radius` token (DEC-049, 8px) via Tailwind's `rounded-lg` scale — no new value introduced.
+
+**Verification:**
+- `npx tsc -b` — clean.
+- `npx eslint .` — same 4 pre-existing baseline errors (`badge.tsx`, `button.tsx`, `tabs.tsx`, `AuthContext.tsx`, all unrelated `react-refresh/only-export-components` warnings), no new ones.
+- `npm run build` — clean; confirmed the new recolored PNG (`subsense-logo-icon-DCae0f7O.png`, 283.65 kB) is the asset actually bundled into `dist/`.
+- Confirmed `rounded-tr-lg` compiles into the built CSS bundle (`grep -c "rounded-tr-lg" dist/assets/index-*.css`).
+- Dev server (`npm run dev`) boots clean, HTTP 200 on load, no console/runtime errors in the server log.
+- **No browser/screenshot tool available in this session's environment** — could not visually confirm the sidebar corner rendering (collapsed/hover-expanded/mobile-drawer states) or the logo icon at actual in-app pixel size (~32-36px) live in a browser. Flagging this explicitly per project convention rather than claiming visual confirmation that didn't happen. Live checklist for whenever this can be checked: sidebar top-right corner reads correctly and doesn't clip nav icons or leave a gap against the TopBar, in all three states (collapsed, hover-expanded, mobile drawer overlay); logo icon reads as lime not amber and stays legible (not muddy/too dark) at real size on all 4 render sites.
+
+**Commit:** `(pending)`
+
+---
+
 ## 2026-07-30 — AuthPage.tsx follow-up: Google button radius + hero/card gap
 
 **Prompt:**
@@ -1010,3 +1036,5 @@ Implement Phase 2 (Authentication and Profile) for SubSense per 16_Implementatio
 **Commit logged:** `202da13` — "Retire DEC-056: standard Button variant=gradient on AuthPage CTAs (item 9, part 3)" (2026-07-30 21:21) — 2 files changed, 10 insertions(+), 43 deletions(-)
 
 **Commit logged:** `67fedc0` — "AuthPage polish: fix Google button radius mismatch and hero/card gap" (2026-07-30 21:22) — 1 file changed, 3 insertions(+), 3 deletions(-)
+
+**Commit logged:** `88e3023` — "Update BUILD_LOG.md with real commit hashes for today's 3 entries" (2026-07-30 21:27) — 1 file changed, 97 insertions(+)
