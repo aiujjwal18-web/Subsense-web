@@ -50,7 +50,7 @@ Mid-review, the consumer-count claim for the logo icon was independently re-veri
 - Dev server (`npm run dev`) boots clean, HTTP 200 on load, no console/runtime errors in the server log.
 - **No browser/screenshot tool available in this session's environment** — could not visually confirm the sidebar corner rendering (collapsed/hover-expanded/mobile-drawer states) or the logo icon at actual in-app pixel size (~32-36px) live in a browser. Flagging this explicitly per project convention rather than claiming visual confirmation that didn't happen. Live checklist for whenever this can be checked: sidebar top-right corner reads correctly and doesn't clip nav icons or leave a gap against the TopBar, in all three states (collapsed, hover-expanded, mobile drawer overlay); logo icon reads as lime not amber and stays legible (not muddy/too dark) at real size on all 4 render sites.
 
-**Commit:** `(pending)`
+**Commit:** `25505fc` — "Polish: recolor logo icon to Cyber Lime, round sidebar's top-right corner"
 
 ---
 
@@ -1038,3 +1038,5 @@ Implement Phase 2 (Authentication and Profile) for SubSense per 16_Implementatio
 **Commit logged:** `67fedc0` — "AuthPage polish: fix Google button radius mismatch and hero/card gap" (2026-07-30 21:22) — 1 file changed, 3 insertions(+), 3 deletions(-)
 
 **Commit logged:** `88e3023` — "Update BUILD_LOG.md with real commit hashes for today's 3 entries" (2026-07-30 21:27) — 1 file changed, 97 insertions(+)
+
+**Commit logged:** `25505fc` — "Polish: recolor logo icon to Cyber Lime, round sidebar's top-right corner" (2026-07-31 16:00) — 3 files changed, 37 insertions(+), 1 deletion(-)
