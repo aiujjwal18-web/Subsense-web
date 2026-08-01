@@ -28,6 +28,22 @@ Two things keep this current automatically:
 
 ---
 
+## 2026-08-01 — Deploy Edge Functions via GitHub Actions (local Supabase CLI blocked on Windows)
+
+**Prompt:**
+Both Phase 6 Edge Functions (`send-reminder-email`, `generate-scheduled-reminders`) were committed and pushed but never actually deployed to the live Supabase project — deploying was explicitly out of scope for the original build task ("no `supabase functions deploy` without a confirmed-linked CLI"). Attempted to deploy manually via the Supabase CLI on the primary dev machine (Windows): both a Scoop install and an npm-local-devDependency install of the CLI produced the same `spawnSync ... UNKNOWN` error (`errno: -4094`, `pid: 0`) when invoking the downloaded `supabase.exe` — consistent with the executable being blocked outright by local security software rather than a corrupted download (retried from a clean reinstall and from the correct project directory, same result both times; Windows Security's own Protection History showed no matching entry, suggesting third-party AV/EDR rather than Defender specifically). Rather than continuing to fight a local execution block, moved deployment to GitHub Actions — same Supabase CLI, but run on GitHub's Linux runners, where this Windows-specific issue doesn't apply.
+
+**What was done:**
+- Added `supabase` (`^2.111.0`) as a devDependency (`package.json`/`package-lock.json`) — the npm package itself installs fine; only executing its bundled Windows binary locally is blocked. Kept in the repo since it's still useful for any future contributor on a machine without this issue, and for local type-checking/tooling that doesn't need to actually execute the binary.
+- Added `.github/workflows/deploy-edge-functions.yml`: triggers on push to `main` touching `supabase/functions/**`, plus a manual `workflow_dispatch` trigger (needed for the very first run, since the commit that adds this workflow file itself only touches `.github/workflows/`, not `supabase/functions/**`, so the path filter won't catch it). Uses `supabase/setup-cli@v1` then `supabase functions deploy --project-ref kamxnvaqkeebsgwssrrr` against a `SUPABASE_ACCESS_TOKEN` repository secret (created by the user in Supabase's Account -> Access Tokens page, added as a GitHub Actions secret — neither the token nor the service-role key were ever handled by the assistant directly).
+
+**Verification:**
+- Not yet run as of this commit — the user still needs to add the `SUPABASE_ACCESS_TOKEN` secret in GitHub (Settings -> Secrets and variables -> Actions) and manually trigger the workflow once via Actions -> "Deploy Supabase Edge Functions" -> Run workflow, since this commit's own push won't auto-trigger it (path filter). Once triggered, both functions should appear under Supabase Dashboard -> Edge Functions -> Functions with a live deployed timestamp, and the two Supabase Cron jobs (already created and pointed at these same function URLs) should start returning `200` instead of `404` on their next tick.
+
+**Commit:** (pending — not yet committed)
+
+---
+
 ## 2026-08-01 — Phase 6: Reminder Engine — `send-reminder-email` + `generate-scheduled-reminders` Edge Functions
 
 **Prompt:**
@@ -1117,3 +1133,7 @@ Implement Phase 2 (Authentication and Profile) for SubSense per 16_Implementatio
 **Commit logged:** `4affd6d` — "Add send-reminder-email Edge Function (hourly cron + dev-trigger single send)" (2026-08-01 16:14) — 1 file changed, 388 insertions(+)
 
 **Commit logged:** `ac22653` — "Add generate-scheduled-reminders Edge Function (daily cron, thin RPC wrapper)" (2026-08-01 16:14) — 1 file changed, 36 insertions(+)
+
+**Commit logged:** `065dddd` — "Add BUILD_LOG.md entry for Phase 6 Edge Functions (send-reminder-email, generate-scheduled-reminders)" (2026-08-01 16:16) — 1 file changed, 48 insertions(+)
+
+**Commit logged:** `f84aadb` — "Add supabase CLI devDependency + GitHub Actions workflow to deploy Edge Functions (local Windows CLI execution blocked)" (2026-08-01 20:39) — 3 files changed, 260 insertions(+)
