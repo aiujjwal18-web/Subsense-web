@@ -1,0 +1,35 @@
+name: Deploy Supabase Edge Functions
+
+# Runs on GitHub's own Linux runners, not the developer's machine — this exists
+# specifically because the Supabase CLI's Windows binary was blocked by local
+# security software on the primary dev machine, making `supabase functions deploy`
+# unusable locally. The CLI itself works fine on Linux, so this sidesteps the
+# problem entirely rather than continuing to fight it locally.
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "supabase/functions/**"
+  workflow_dispatch: {}
+  # workflow_dispatch lets you manually re-run a deploy from the GitHub Actions
+  # tab (Actions -> Deploy Supabase Edge Functions -> Run workflow) without
+  # needing a new commit that touches supabase/functions/** — useful for the
+  # very first run right after this file is added (that push only touches
+  # .github/workflows/, so the paths filter above won't trigger it automatically).
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Deploy all Edge Functions
+        run: supabase functions deploy --project-ref kamxnvaqkeebsgwssrrr
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
