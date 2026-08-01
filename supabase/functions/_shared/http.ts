@@ -48,7 +48,10 @@ export function requireServiceRole(req: Request): Response | null {
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
 
   if (!serviceRoleKey || !token || !safeCompare(token, serviceRoleKey)) {
-    return errorResponse(401, "UNAUTHORIZED", "Service-role authorization required.")
+    // TEMPORARY DIAGNOSTIC (2026-08-01) — remove once the 401 root cause is confirmed.
+    // Reports presence/length only, never the actual secret value.
+    const debug = `envPresent=${serviceRoleKey.length > 0} envLen=${serviceRoleKey.length} tokenLen=${token.length}`
+    return errorResponse(401, "UNAUTHORIZED", `Service-role authorization required. debug: ${debug}`)
   }
   return null
 }
