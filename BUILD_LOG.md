@@ -1137,3 +1137,9 @@ Implement Phase 2 (Authentication and Profile) for SubSense per 16_Implementatio
 **Commit logged:** `065dddd` — "Add BUILD_LOG.md entry for Phase 6 Edge Functions (send-reminder-email, generate-scheduled-reminders)" (2026-08-01 16:16) — 1 file changed, 48 insertions(+)
 
 **Commit logged:** `f84aadb` — "Add supabase CLI devDependency + GitHub Actions workflow to deploy Edge Functions (local Windows CLI execution blocked)" (2026-08-01 20:39) — 3 files changed, 260 insertions(+)
+
+**Commit logged:** `42f4a22` — "Add BUILD_LOG.md entry for GitHub Actions Edge Function deploy workflow" (2026-08-01 20:39) — 1 file changed, 20 insertions(+)
+
+**Commit logged:** `c286089` — "temp: add 401 diagnostic to requireServiceRole" (2026-08-01 21:10) — 1 file changed, 4 insertions(+), 1 deletion(-)
+
+**Commit logged:** `1477718` — "revert: remove temp 401 diagnostic" (2026-08-01 21:23) — 1 file changed, 1 insertion(+), 4 deletions(-)
