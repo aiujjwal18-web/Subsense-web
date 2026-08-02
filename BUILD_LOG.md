@@ -28,6 +28,21 @@ Two things keep this current automatically:
 
 ---
 
+## 2026-08-02 — revert: remove temp debug logging from useAiInsight
+
+**Prompt:**
+Strip the temporary debug logging added to diagnose the pause/resume cooldown bug and push the cleanup.
+
+**What was done:**
+- `src/features/ai-insights/useAiInsight.ts` — removed both `TEMP DEBUG` `console.log` blocks (the `load()`-top log and the `shouldRegenerateInsight` call-site log) added in the previous commit. `git diff 4f5ff30 -- src/features/ai-insights/useAiInsight.ts` (the commit right before the debug logging was added) returned no output — confirms the strip restored the file to byte-identical pre-debug state, not just visually similar.
+
+**Verification:**
+- `npx tsc -b`, `npx eslint .`, `npm run build` — clean, same 4-error baseline.
+
+**Commit:** `c4d5b6f` — "revert: remove temp debug logging from useAiInsight" (2026-08-02 21:58) — 1 file changed, 1 insertion(+), 26 deletions(-)
+
+---
+
 ## 2026-08-02 — temp: add console logging to diagnose pause/resume cooldown bug
 
 **Prompt:**
@@ -1335,3 +1350,7 @@ Implement Phase 2 (Authentication and Profile) for SubSense per 16_Implementatio
 **Commit logged:** `2d0ea3a` — "Add BUILD_LOG.md entry for auto-regenerate cooldown fix" (2026-08-02 21:31) — 1 file changed, 21 insertions(+)
 
 **Commit logged:** `1d2651f` — "temp: add console logging to diagnose pause/resume cooldown bug" (2026-08-02 21:50) — 1 file changed, 26 insertions(+), 1 deletion(-)
+
+**Commit logged:** `d8adf1a` — "Add BUILD_LOG.md entry for temp debug logging commit" (2026-08-02 21:51) — 1 file changed, 22 insertions(+)
+
+**Commit logged:** `c4d5b6f` — "revert: remove temp debug logging from useAiInsight" (2026-08-02 21:58) — 1 file changed, 1 insertion(+), 26 deletions(-)
