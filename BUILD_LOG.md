@@ -28,6 +28,23 @@ Two things keep this current automatically:
 
 ---
 
+## 2026-08-02 — Add 5-minute auto-regenerate cooldown to AI Insight staleness check
+
+**Prompt:**
+Close a gap in the staleness logic: `subscriptions.updated_at > ai_recommendations.generated_at` is the trigger, but every `lifecycle_status` change bumps `updated_at`, including a resume from paused — so rapid pause/resume toggling could make a cached insight look stale on every visit and trigger unbounded OpenAI calls seconds apart. Add a floor to the auto-trigger path only (not manual Regenerate): skip auto-regeneration if `generated_at` is within the last 5 minutes, regardless of `updated_at`. Keep the existing `updated_at` and 24h-max-age checks as-is. No schema change. Confirm both `useAiInsight.ts` and `useWorkspaceAiInsights.ts` got the change, and re-run the BR-001 write-scope grep.
+
+**What was done:**
+- `src/features/ai-insights/ai-insight-utils.ts` — added `MIN_AUTO_REGENERATE_INTERVAL_MS` (5 minutes) and an early-return guard in `shouldRegenerateInsight()`: returns `false` immediately if `generated_at` is within the cooldown window, ahead of the existing 24h-max-age and `updated_at` checks (both untouched — the guard can never suppress a genuinely stale-by-age case, since a 5-minute-old row is nowhere near the 24h threshold by construction). This is the single function both hooks already call for their auto-trigger decision (`useAiInsight.ts:115`, `useWorkspaceAiInsights.ts:164`) — confirmed via grep before editing, rather than duplicating the change into each hook file directly, since neither needed a direct edit. Also confirmed both hooks' manual `regenerate()` calls `generate("manual", ...)` directly and never goes through `shouldRegenerateInsight`, so manual Regenerate was already structurally unaffected, not something that needed exempting.
+
+**Verification:**
+- BR-001/GP-002 write-scope re-check on `ai-generate-insight/index.ts` — unchanged, still exactly the same two `.insert()` calls (`ai_recommendations`, `audit_logs`); no backend file touched by this change at all.
+- `npx tsc -b` — clean. `npx eslint` on the changed file and repo-wide — clean, same 4-error baseline. `npm run build` — clean.
+- `git status` confirmed exactly one real file changed.
+
+**Commit:** `4f5ff30` — "Add 5-minute auto-regenerate cooldown to AI Insight staleness check" (2026-08-02 21:31) — 1 file changed, 16 insertions(+)
+
+---
+
 ## 2026-08-02 — Suppress AI Insight generation for Paused subscriptions, same as Archived
 
 **Prompt:**
@@ -1292,3 +1309,7 @@ Implement Phase 2 (Authentication and Profile) for SubSense per 16_Implementatio
 **Commit logged:** `f274ced` — "Add BUILD_LOG.md entry for AI Insight cost-restating fix" (2026-08-02 20:52) — 1 file changed, 24 insertions(+)
 
 **Commit logged:** `2ec6f33` — "Suppress AI Insight generation for Paused subscriptions, same as Archived" (2026-08-02 21:14) — 3 files changed, 63 insertions(+), 27 deletions(-)
+
+**Commit logged:** `71308a2` — "Add BUILD_LOG.md entry for Paused-suppression fix in useAiInsight" (2026-08-02 21:15) — 1 file changed, 24 insertions(+)
+
+**Commit logged:** `4f5ff30` — "Add 5-minute auto-regenerate cooldown to AI Insight staleness check" (2026-08-02 21:31) — 1 file changed, 16 insertions(+)
