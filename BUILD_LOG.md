@@ -28,6 +28,26 @@ Two things keep this current automatically:
 
 ---
 
+## 2026-08-02 — Suppress AI Insight generation for Paused subscriptions, same as Archived
+
+**Prompt:**
+Extend the existing archived-subscription suppression in `useAiInsight` to Paused subscriptions too, with a static message ("Insight resumes when this subscription is active again"), no OpenAI call, no Regenerate action while paused — closing a gap DEC-064's existing paused-deprioritization pattern (already applied to urgency, Upcoming Renewals, Recommended Reviews) had left in this one surface: workspace mode already excluded paused via `pickTopUrgent`'s own filter, but single mode only guarded against archived. Frontend-only, no backend/contract impact. Verify with the same BR-001 write-scope check and confirm both Archived and Paused show the correct static state before calling Phase 7 done.
+
+**What was done:**
+- `src/features/ai-insights/useAiInsight.ts` — generalized the archived-only `isArchivedRef` guard into `suppressedRef: "archived" | "paused" | null`, set from `subscriptions.lifecycle_status` (already fetched alongside `updated_at`). Blocks both the silent auto-trigger and manual `regenerate()` for either state — no cached-row read, no OpenAI call. `AiInsightState` gained two new distinct values, `"suppressed-archived"`/`"suppressed-paused"`, replacing the generic `"unavailable"` fallback for these cases specifically, since there's nothing to retry until the subscription's own lifecycle status changes (a materially different UI contract than a real generation failure).
+- `src/features/ai-insights/AiDecisionCard.tsx` — new render branch for both suppressed states: header (icon/name/context) plus static, state-specific copy ("Insight resumes when this subscription is active again." / "Insight unavailable for archived subscriptions."), with no button at all — unlike `"unavailable"`'s "Try again."
+- `src/features/subscriptions/SubscriptionDetailsPage.tsx` — the header-level "Regenerate" button (separate from the card's own internal one) is now hidden entirely, not just disabled, for both suppressed states.
+
+**Verification:**
+- Confirmed frontend-only via `git status` — only the three files above changed; `ai-generate-insight/index.ts` and every other backend file untouched.
+- BR-001/GP-002 write-scope re-check on `ai-generate-insight/index.ts` anyway, as requested — unchanged, still exactly the same two `.insert()` calls (`ai_recommendations`, `audit_logs`).
+- `npx tsc -b`, `npx eslint .`, `npm run build` — clean, same 4-error baseline.
+- **Archived and Paused verified by code-tracing both paths, not a live click-test** (no browser in this sandbox, same standing gap every phase has had): traced `lifecycle_status === "archived"` → `suppressedRef.current = "archived"` → `state = "suppressed-archived"` → archived copy, no button, header button hidden, defensive `regenerate()` call also blocked with no API call; same trace for `"paused"` → `"suppressed-paused"` → paused copy. A normal `"active"` subscription is unaffected — `suppressed` stays `null`, falls through to the existing cached-row/staleness flow unchanged.
+
+**Commit:** `2ec6f33` — "Suppress AI Insight generation for Paused subscriptions, same as Archived" (2026-08-02 21:14) — 3 files changed, 63 insertions(+), 27 deletions(-)
+
+---
+
 ## 2026-08-02 — Fix AI Insight restating cost figure already shown in Financial Impact line
 
 **Prompt:**
@@ -1268,3 +1288,7 @@ Implement Phase 2 (Authentication and Profile) for SubSense per 16_Implementatio
 **Commit logged:** `a1f0bc4` — "Add BUILD_LOG.md entry for CORS fix on ai-generate-insight" (2026-08-02 20:41) — 1 file changed, 23 insertions(+)
 
 **Commit logged:** `840c692` — "Fix AI Insight restating cost figure already shown in Financial Impact line" (2026-08-02 20:51) — 2 files changed, 11 insertions(+), 9 deletions(-)
+
+**Commit logged:** `f274ced` — "Add BUILD_LOG.md entry for AI Insight cost-restating fix" (2026-08-02 20:52) — 1 file changed, 24 insertions(+)
+
+**Commit logged:** `2ec6f33` — "Suppress AI Insight generation for Paused subscriptions, same as Archived" (2026-08-02 21:14) — 3 files changed, 63 insertions(+), 27 deletions(-)
