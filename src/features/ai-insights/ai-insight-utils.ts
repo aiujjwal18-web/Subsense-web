@@ -7,6 +7,15 @@ export const TOP_URGENT_LIMIT = 3
 // DEC-079: a cached insight is stale after 24 hours.
 const STALENESS_HOURS = 24
 
+// Closes a gap in the updated_at proxy above (not part of DEC-079 itself): every
+// lifecycle_status change bumps subscriptions.updated_at, including a resume from
+// paused, so rapid pause/resume toggling could otherwise make the cached insight look
+// stale on every visit and trigger unbounded auto-regenerate calls seconds apart. This
+// floor only suppresses the AUTO-triggered call in shouldRegenerateInsight below — it
+// has no effect on manual Regenerate, which calls generate("manual") directly in both
+// useAiInsight.ts and useWorkspaceAiInsights.ts and never goes through this function.
+const MIN_AUTO_REGENERATE_INTERVAL_MS = 5 * 60 * 1000
+
 export interface FinancialImpact {
   monthly_impact: number
   annual_impact: number
@@ -36,6 +45,13 @@ export function shouldRegenerateInsight(cachedRow: CachedInsightRow | null, subs
   if (!cachedRow) return true
 
   const generatedAt = new Date(cachedRow.generated_at).getTime()
+
+  // Cooldown floor: never auto-regenerate a row generated within the last 5 minutes,
+  // regardless of what updated_at says. A row this fresh is also, by construction,
+  // nowhere near the 24h-max-age threshold below, so this never suppresses a
+  // genuinely stale-by-age case — it only ever short-circuits the updated_at check.
+  if (Date.now() - generatedAt < MIN_AUTO_REGENERATE_INTERVAL_MS) return false
+
   const ageHours = (Date.now() - generatedAt) / (60 * 60 * 1000)
   if (ageHours > STALENESS_HOURS) return true
 
