@@ -110,8 +110,6 @@ async function generateInsightForSubscription(
 ): Promise<InsightOutcome> {
   const context: InsightContext = {
     subscriptionName: getSubscriptionName(sub),
-    cost: sub.cost,
-    currency: sub.currency,
     billingFrequency: sub.billing_frequency,
     nextRenewalDate: formatDate(sub.next_renewal_date),
     daysUntilRenewal: daysUntil(sub.next_renewal_date),
