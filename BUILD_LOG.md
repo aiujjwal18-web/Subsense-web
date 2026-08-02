@@ -28,6 +28,48 @@ Two things keep this current automatically:
 
 ---
 
+## 2026-08-02 — Phase 7: AI Decision Support — `ai-generate-insight` + AI Decision Card
+
+**Prompt:**
+Plan (then, on approval, build) Phase 7 against the already-locked DEC-079 architecture (doc 08 v1.51): lazy-generate on read (no cron), Decision Workspace's AI batch capped at the 3 subscriptions in Critical/Upcoming urgency, model `gpt-4o-mini`, and the already-specified `ai-generate-insight` contract (doc 11 §5.1). Replace `SubscriptionDetailsPage.tsx`'s static "AI Insight" placeholder and `DecisionWorkspacePage.tsx`'s "AI Insights"/"Recommended Reviews" placeholders with real AI-generated insight cards (C-003). Build in the same bite-sized, one-step-at-a-time style as Phase 6 — implement a piece, verify, wait before the next.
+
+Planning pass (three parallel Explore agents plus direct doc/SQL reads) surfaced two real contradictions in the "already-specified, don't redesign" contract, both resolved with the user via `AskUserQuestion` before finalizing the plan rather than silently picked: (1) doc 11's response shape (`{recommendation, reason, financial_impact}`) is flat and can't hold up to 3 subscriptions' worth of results from one `{scope:"workspace"}` call — resolved by wrapping workspace-scope responses in `{"insights": [...]}` while single-subscription responses keep the flat shape; the user updated doc 11 to v1.11 to reflect this. (2) DEC-067 left "AI Insights"/"Recommended Reviews" as "one concept split across two UI slots" without saying whether that meant merged or split — resolved as one merged "AI Insights" section (doc 04 updated to v1.20). A third correction landed mid-plan-review: my draft's "critical/upcoming — same rule as `upcomingRenewals`" shorthand would have accidentally pulled in Overdue too (since `upcomingRenewals` itself is a 3-tier filter); the user caught this before it reached code — DEC-079's actual scope is Critical/Upcoming only, Overdue deliberately excluded (its renewal decision point has already passed).
+
+One real complication flagged rather than worked around: DEC-079's staleness rule wants to detect `next_renewal_date`/`lifecycle_status` changes since a cached insight's `generated_at`, but `ai_recommendations` stores no snapshot of either to compare against, and the table isn't altered. Resolved by using `subscriptions.updated_at > generated_at` as a practical proxy (accepted as-is by the user, occasionally more eager than the literal rule, never less).
+
+Mid-build correction (after the main handler landed and passed its own review): success responses were initially flat per doc 11's literal text; the user corrected this to the standard `{success,data,meta}` envelope (doc 12/every other Path B endpoint) once doc 11 was updated to match — errors were already using that envelope and stayed unchanged.
+
+Second mid-build correction (after `SubscriptionDetailsPage.tsx` was wired): single-mode had no archived-subscription guard, an asymmetry against workspace mode (which already excludes archived rows via its own query). Fixed frontend-only in `useAiInsight.ts` — no backend change, no new error code — archived subscriptions go straight to the neutral "unavailable" state, no OpenAI call made, auto-trigger and manual Regenerate both blocked.
+
+**What was done:**
+- `supabase/functions/_shared/require-user.ts` — `requireAuthenticatedUser()`, validates the caller's own session JWT via `supabaseAdmin.auth.getUser(jwt)` and resolves it to `public.users.id` — a different auth model from Phase 6's `requireServiceRole()` (this endpoint is called by the browser, not Cron), added alongside it, not replacing it.
+- `supabase/functions/_shared/urgency.ts` — Deno-side port of `computeRenewalUrgency` (DEC-054 thresholds), used only for workspace-scope's server-side top-3 selection, since `{scope:"workspace"}` requests carry no `subscription_ids`.
+- `supabase/functions/_shared/openai-client.ts` — `generateInsightText()`, raw `fetch()` to OpenAI's Chat Completions endpoint (no SDK, matching the Resend pattern), `gpt-4o-mini`, `response_format: json_object`, `temperature: 0.8` (in service of DEC-045's phrasing-variety rule), 2 attempts/~500ms backoff/~20s timeout (shorter than Phase 6's cron budget — this is an interactive, in-browser wait). Timeout → `AI_001`; anything else → `AI_003`.
+- `supabase/functions/_shared/insight-prompt.ts` — `buildInsightPrompt()`, system prompt embeds doc 02's AI Experience Standard and AI Copy Tone rules (DEC-045) verbatim plus BR-001's boundary; requests strict JSON `{recommendation, reason}` only — `financial_impact` is never asked of the model.
+- `supabase/functions/ai-generate-insight/index.ts` — main handler. Single mode: ownership check (`AI_002` on mismatch/not-found), generate, insert `ai_recommendations`+`audit_logs` (`action:'ai_generated'`), return the flat envelope-wrapped shape. Workspace mode: recomputes the caller's own top-3 Critical/Upcoming subscriptions server-side (Overdue excluded), generates per subscription (one failure doesn't fail the batch — omitted from `insights`, not a page-level error), returns `{insights:[...]}`. Financial impact computed server-side from `subscriptions.monthly_equivalent`/`.annual_equivalent`/`.currency` (DB-trigger-authoritative), never from the model. **Zero writes to `subscriptions`/`shared_subscriptions` anywhere in this file — verified twice by grep, not just asserted** (see Verification).
+- `src/features/ai-insights/ai-insight-utils.ts` — `shouldRegenerateInsight()` (DEC-079's staleness rule via the `updated_at` proxy), `TOP_URGENT_LIMIT = 3`, shared `FinancialImpact`/`CachedInsightRow` types.
+- `src/features/ai-insights/useAiInsight.ts` — single-subscription hook. Reads the latest cached row + `subscriptions.updated_at`/`.lifecycle_status` (small dedicated query, doesn't widen `SUBSCRIPTION_SELECT_COLUMNS`), auto-triggers a silent background regenerate if stale (shows stale-but-present content while refreshing, no loading flash, no toast), blocks entirely for archived subscriptions (added mid-build, see above). `requestId` counter guards stale async responses.
+- `src/features/ai-insights/useWorkspaceAiInsights.ts` — batch variant. `pickTopUrgent()` filters to `critical`/`upcoming` only (Overdue excluded, per the corrected filter). Batch-fetches cached rows + `updated_at` for just the candidate ids (no N+1), triggers one `{scope:"workspace"}` call if any are stale/missing, distributes the response per `subscription_id` — a subscription missing from the response falls back to its existing cached content if any, `"unavailable"` only if there's none (a deliberate, user-approved refinement over doc 11's literal text, since a transient batch-item failure shouldn't blank out a still-valid cached insight — doc 11's error-handling note will be updated to reflect this separately).
+- `src/features/ai-insights/AiDecisionCard.tsx` — C-003 component: category icon/name/urgency badge, a factual context line (cost + renewal timing, reusing `formatMoney`/`formatRenewalLabel`), the AI recommendation + reason text, a financial-impact line, "Review Subscription" (navigates) and "Remind Me Later" (session-local dismiss only, no mutation — BR-001). Urgent state gates `<GlowingEffect />` via the same 3-way `critical`/`upcoming`/`overdue` check `SubscriptionCard.tsx` already uses. Loading skeleton, neutral unavailable state with "Try again", subtle "Updating…" indicator during background regeneration. Doc 06's "Resolved" state intentionally not implemented (no persistence mechanism exists, out of scope).
+- `src/features/subscriptions/SubscriptionDetailsPage.tsx` — `useAiInsight(id)` called unconditionally before the loading/notFound/error early returns (hooks can't follow a conditional return); static "AI Insight" placeholder replaced with a header (title + Regenerate button) and `<AiDecisionCard />`.
+- `src/features/decision-workspace/DecisionWorkspacePage.tsx` — `useWorkspaceAiInsights(rows)` called unconditionally before the loading/error early returns; both "AI Insights" and "Recommended Reviews" placeholders removed, replaced with one merged "AI Insights" section (up to 3 cards, section-level Regenerate, "Nothing urgent to review right now" empty state distinct from the per-card unavailable state).
+
+**Verification:**
+- `npx tsc -b`, `npx eslint .`, `npm run build` — clean at every step, always back to the same 4-error pre-existing baseline; re-run after every file and after both mid-build corrections.
+- Two real `react-hooks/set-state-in-effect` lint errors (a rule not present during Phase 6) hit in both hooks — fixed by moving the state reset into the async `load()` function instead of calling it synchronously at the top of the effect body, same fix both times.
+- One real type error (`FinancialImpact.currency`/the card's `currency` prop were `string`, `formatMoney` expects the `Currency` union) — fixed by importing and using `Currency` from `subscription-utils.ts` instead of loosening the utility.
+- BR-001/GP-002 write-scope check on `ai-generate-insight/index.ts`, done twice (once right after the file was written, once as the final pass before considering the phase done, per explicit request): grepped for every `.update()`/`.insert()`/`.delete()`/`.upsert()` call — exactly two exist both times, both `.insert()`, against `ai_recommendations` and `audit_logs` only. Confirmed clean, not just asserted.
+- **Not verified, flagged rather than claimed**: no live OpenAI call, real auth-JWT round-trip, or Vercel/Supabase deploy from this sandbox (no `.env`, no linked Supabase CLI, no browser) — same standing gap as every previous phase.
+
+**Commit:**
+- `a15b2b9` — "Add Phase 7 Edge Function shared helpers: user auth, urgency, OpenAI client, prompt" (2026-08-02 20:23) — 4 files changed, 223 insertions(+)
+- `3628f04` — "Add ai-generate-insight Edge Function (single + workspace-batch modes)" (2026-08-02 20:23) — 1 file changed, 266 insertions(+)
+- `57edd06` — "Add AI Insight frontend: staleness hook, workspace batch hook, C-003 card" (2026-08-02 20:23) — 4 files changed, 492 insertions(+)
+- `b574d64` — "Wire real AI Insight into SubscriptionDetailsPage" (2026-08-02 20:24) — 1 file changed, 42 insertions(+), 5 deletions(-)
+- `f011925` — "Merge AI Insights + Recommended Reviews into one real section (DEC-067)" (2026-08-02 20:24) — 1 file changed, 56 insertions(+), 17 deletions(-)
+
+---
+
 ## 2026-08-02 — Add vercel.json SPA rewrite to fix production 404 on direct nested-route navigation
 
 **Prompt:**
@@ -1167,3 +1209,15 @@ Implement Phase 2 (Authentication and Profile) for SubSense per 16_Implementatio
 **Commit logged:** `39358cd` — "Recolor reminder email shell to Cyber Lime light-mode tokens (DEC-073)" (2026-08-02 12:26) — 1 file changed, 7 insertions(+), 6 deletions(-)
 
 **Commit logged:** `0c26ee0` — "Add vercel.json SPA rewrite to fix 404 on direct nested-route navigation" (2026-08-02 14:32) — 1 file changed, 5 insertions(+)
+
+**Commit logged:** `c35aaef` — "Add BUILD_LOG.md entry for vercel.json SPA rewrite fix" (2026-08-02 14:38) — 1 file changed, 24 insertions(+)
+
+**Commit logged:** `a15b2b9` — "Add Phase 7 Edge Function shared helpers: user auth, urgency, OpenAI client, prompt" (2026-08-02 20:23) — 4 files changed, 223 insertions(+)
+
+**Commit logged:** `3628f04` — "Add ai-generate-insight Edge Function (single + workspace-batch modes)" (2026-08-02 20:23) — 1 file changed, 266 insertions(+)
+
+**Commit logged:** `57edd06` — "Add AI Insight frontend: staleness hook, workspace batch hook, C-003 card" (2026-08-02 20:23) — 4 files changed, 492 insertions(+)
+
+**Commit logged:** `b574d64` — "Wire real AI Insight into SubscriptionDetailsPage" (2026-08-02 20:24) — 1 file changed, 42 insertions(+), 5 deletions(-)
+
+**Commit logged:** `f011925` — "Merge AI Insights + Recommended Reviews into one real section (DEC-067)" (2026-08-02 20:24) — 1 file changed, 56 insertions(+), 17 deletions(-)
