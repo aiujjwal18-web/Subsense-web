@@ -28,6 +28,24 @@ Two things keep this current automatically:
 
 ---
 
+## 2026-08-02 — Add vercel.json SPA rewrite to fix production 404 on direct nested-route navigation
+
+**Prompt:**
+Direct navigation to any nested client-routed path (e.g. `/auth/reset-password`, `/auth/forgot-password`) 404s on the live Vercel deployment — this is a pure client-side React Router SPA with no server routes, and no `vercel.json` existed anywhere in the repo, so Vercel's zero-config Vite build only serves files that physically exist in the build output and can't resolve a nested path without an explicit rewrite. Confirmed real-world impact, not just a cosmetic edge case: `AuthContext.tsx`'s `resetPasswordForEmail()` sets `redirectTo: ${window.location.origin}/auth/reset-password`, so the actual password-reset email link was hitting this same 404 in production. Fix: add `vercel.json` at the repo root with a catch-all rewrite to `/index.html`, verify `tsc`/`eslint`/`build` stay clean, commit, push, and confirm the Vercel deployment picks it up.
+
+**What was done:**
+- `vercel.json` (new file, repo root): `{"rewrites":[{"source":"/(.*)","destination":"/index.html"}]}` — all paths fall back to `index.html`, letting React Router handle routing client-side. No other config changes.
+
+**Verification:**
+- `npx tsc -b` — clean.
+- `npx eslint .` — same 4 pre-existing baseline errors (`badge.tsx`, `button.tsx`, `tabs.tsx`, `AuthContext.tsx`), no new ones.
+- `npm run build` — clean, same pre-existing chunk-size warning only.
+- **Not verified from this sandbox, flagged rather than claimed**: no `vercel` CLI, no `.vercel` project link, and no `gh` CLI available in this environment, so the actual Vercel deployment triggered by this push could not be confirmed to succeed from here. The user will verify directly by visiting `https://www.subsense.co.in/auth/reset-password` and `https://www.subsense.co.in/auth/forgot-password` (direct navigation, not in-app) once Vercel's own GitHub integration finishes redeploying from this push.
+
+**Commit:** `0c26ee0` — "Add vercel.json SPA rewrite to fix 404 on direct nested-route navigation"
+
+---
+
 ## 2026-08-01 — Deploy Edge Functions via GitHub Actions (local Supabase CLI blocked on Windows)
 
 **Prompt:**
@@ -1143,3 +1161,9 @@ Implement Phase 2 (Authentication and Profile) for SubSense per 16_Implementatio
 **Commit logged:** `c286089` — "temp: add 401 diagnostic to requireServiceRole" (2026-08-01 21:10) — 1 file changed, 4 insertions(+), 1 deletion(-)
 
 **Commit logged:** `1477718` — "revert: remove temp 401 diagnostic" (2026-08-01 21:23) — 1 file changed, 1 insertion(+), 4 deletions(-)
+
+**Commit logged:** `b6069ca` — "Update BUILD_LOG.md" (2026-08-01 21:35) — 1 file changed, 6 insertions(+)
+
+**Commit logged:** `39358cd` — "Recolor reminder email shell to Cyber Lime light-mode tokens (DEC-073)" (2026-08-02 12:26) — 1 file changed, 7 insertions(+), 6 deletions(-)
+
+**Commit logged:** `0c26ee0` — "Add vercel.json SPA rewrite to fix 404 on direct nested-route navigation" (2026-08-02 14:32) — 1 file changed, 5 insertions(+)
