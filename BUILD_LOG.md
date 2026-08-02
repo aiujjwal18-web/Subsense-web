@@ -28,6 +28,26 @@ Two things keep this current automatically:
 
 ---
 
+## 2026-08-02 — Fix AI Insight restating cost figure already shown in Financial Impact line
+
+**Prompt:**
+Once the CORS fix made the AI Insight card live, the generated recommendation text was restating the monthly cost that `AiDecisionCard`'s Financial Impact line already shows separately — a real violation of DEC-045's "state each figure once per card." Asked to update `insight-prompt.ts`'s system prompt to explicitly forbid the model from stating cost/price in its own prose, scoping its own words to renewal timing, lifecycle/shared status, and reasoning only, then redeploy.
+
+Went one step beyond the literal ask, flagged before committing: an instruction alone ("don't restate the number") is weaker than never giving the model the number in the first place, since instruction-following isn't a hard guarantee. Removed `cost`/`currency` from `InsightContext` entirely rather than relying only on a stronger prompt instruction — the user confirmed this scope expansion before it was committed.
+
+**What was done:**
+- `supabase/functions/_shared/insight-prompt.ts` — `InsightContext` no longer carries `cost`/`currency`. `SYSTEM_PROMPT`'s AI Copy Tone rules rewritten: explicit instruction that cost/price/any monetary amount must never appear in the model's prose, and that the model "has not been given the number" — recommendation and reason scoped to renewal timing, lifecycle status, and shared status only. The JSON-shape description in the prompt reinforces "no cost figures" on both fields.
+- `supabase/functions/ai-generate-insight/index.ts` — stopped passing `cost`/`currency` into the `InsightContext` object built for `buildInsightPrompt()`. `financial_impact` itself is unaffected — still computed server-side from the same `subscriptions.monthly_equivalent`/`.annual_equivalent`/`.currency` columns, never from the model, unchanged from the original Phase 7 design.
+
+**Verification:**
+- BR-001/GP-002 write-scope re-check on `ai-generate-insight/index.ts` (changed again) — still exactly the same two `.insert()` calls (`ai_recommendations`, `audit_logs`), nothing else.
+- `npx eslint` on both changed files, `npx tsc -b`, `npx eslint .`, `npm run build` — all clean, same 4-error baseline.
+- **Not verified from this sandbox**: the actual model output after redeploy — only a real card render can confirm the fix landed, same standing gap as every previous phase.
+
+**Commit:** `840c692` — "Fix AI Insight restating cost figure already shown in Financial Impact line" (2026-08-02 20:51) — 2 files changed, 11 insertions(+), 9 deletions(-)
+
+---
+
 ## 2026-08-02 — Fix CORS: ai-generate-insight preflight had no Access-Control headers
 
 **Prompt:**
@@ -1244,3 +1264,7 @@ Implement Phase 2 (Authentication and Profile) for SubSense per 16_Implementatio
 **Commit logged:** `a52277d` — "Add BUILD_LOG.md entry for Phase 7 AI Decision Support (ai-generate-insight, AI Decision Card)" (2026-08-02 20:25) — 1 file changed, 54 insertions(+)
 
 **Commit logged:** `17dbdae` — "Fix CORS: browser preflight to ai-generate-insight had no Access-Control headers" (2026-08-02 20:41) — 2 files changed, 25 insertions(+), 2 deletions(-)
+
+**Commit logged:** `a1f0bc4` — "Add BUILD_LOG.md entry for CORS fix on ai-generate-insight" (2026-08-02 20:41) — 1 file changed, 23 insertions(+)
+
+**Commit logged:** `840c692` — "Fix AI Insight restating cost figure already shown in Financial Impact line" (2026-08-02 20:51) — 2 files changed, 11 insertions(+), 9 deletions(-)
