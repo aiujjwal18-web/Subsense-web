@@ -2,7 +2,7 @@ import type { SupabaseClient } from "jsr:@supabase/supabase-js@2"
 
 import { createSupabaseAdminClient } from "../_shared/supabase-admin.ts"
 import { requireAuthenticatedUser } from "../_shared/require-user.ts"
-import { errorResponse, successResponse } from "../_shared/http.ts"
+import { errorResponse, handleCorsPreflight, successResponse } from "../_shared/http.ts"
 import { computeRenewalUrgency, daysUntil } from "../_shared/urgency.ts"
 import { generateInsightText } from "../_shared/openai-client.ts"
 import { buildInsightPrompt, type InsightContext } from "../_shared/insight-prompt.ts"
@@ -162,6 +162,9 @@ async function generateInsightForSubscription(
 }
 
 Deno.serve(async (req) => {
+  const corsPreflight = handleCorsPreflight(req)
+  if (corsPreflight) return corsPreflight
+
   const supabaseAdmin = createSupabaseAdminClient()
 
   const authResult = await requireAuthenticatedUser(req, supabaseAdmin)
