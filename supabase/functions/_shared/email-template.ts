@@ -57,10 +57,11 @@ const FOOTER_TEXT_BY_TYPE: Record<string, string> = {
     "You're getting this because it's been a while since your last visit. Manage this anytime in SubSense settings.",
 }
 
-// Doc 25 (25_SubSense_Resend_Notification_Templates_v1.1.html) shell, reused verbatim —
-// light-mode Ledger Dark tokens, IBM Plex Sans, #1E40AF accent. notification_templates
-// has no persistent Resend template object; subject/body (plain text, {{var}} tokens)
-// are rendered into this shell at send time.
+// Doc 25 (25_SubSense_Resend_Notification_Templates_v1.2.html) shell, reused verbatim —
+// light-mode Cyber Lime tokens (DEC-073): #4D7C0F wordmark, #A3E635 button fill,
+// #0F172A button text. IBM Plex Sans. notification_templates has no persistent Resend
+// template object; subject/body (plain text, {{var}} tokens) are rendered into this
+// shell at send time.
 export function renderEmail(
   templateSubject: string,
   templateBody: string,
@@ -77,7 +78,7 @@ export function renderEmail(
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px; margin:0 auto; background-color:#FFFFFF; border:1px solid #E2E8F0; border-radius:8px; overflow:hidden;">
     <tr>
       <td style="padding:32px 32px 24px 32px;">
-        <span style="font-family:'IBM Plex Sans', Helvetica, Arial, sans-serif; font-size:18px; font-weight:600; color:#1E40AF; letter-spacing:-0.01em;">SubSense</span>
+        <span style="font-family:'IBM Plex Sans', Helvetica, Arial, sans-serif; font-size:18px; font-weight:600; color:#4D7C0F; letter-spacing:-0.01em;">SubSense</span>
       </td>
     </tr>
     <tr>
@@ -88,7 +89,7 @@ export function renderEmail(
     </tr>
     <tr>
       <td style="padding:0 32px 28px 32px;">
-        <a href="${appUrl}" style="display:inline-block; font-family:'IBM Plex Sans', Helvetica, Arial, sans-serif; font-size:15px; font-weight:600; color:#FFFFFF; background-color:#1E40AF; text-decoration:none; padding:12px 24px; border-radius:8px;">${ctaLabel}</a>
+        <a href="${appUrl}" style="display:inline-block; font-family:'IBM Plex Sans', Helvetica, Arial, sans-serif; font-size:15px; font-weight:600; color:#0F172A; background-color:#A3E635; text-decoration:none; padding:12px 24px; border-radius:8px;">${ctaLabel}</a>
       </td>
     </tr>
     <tr>
