@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react"
-import { Pencil } from "lucide-react"
+import { Loader2, Pencil, RefreshCw } from "lucide-react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 import { toast } from "sonner"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { CategoryIcon } from "@/components/subscriptions/CategoryIcon"
+import { AiDecisionCard } from "@/features/ai-insights/AiDecisionCard"
+import { useAiInsight } from "@/features/ai-insights/useAiInsight"
 import {
   Dialog,
   DialogClose,
@@ -80,6 +82,11 @@ function SubscriptionDetailsContent({ id }: { id: string }) {
   const [nextRenewalDate, setNextRenewalDate] = useState("")
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("manual")
   const [paymentReferenceNote, setPaymentReferenceNote] = useState("")
+
+  // Called unconditionally (before the loading/notFound/error early returns below) —
+  // hooks can't be called after a conditional return. useAiInsight only needs `id`,
+  // not the loaded `row`, so it can run independently of the subscription fetch above.
+  const aiInsight = useAiInsight(id)
 
   useEffect(() => {
     let cancelled = false
@@ -470,11 +477,41 @@ function SubscriptionDetailsContent({ id }: { id: string }) {
           )}
         </section>
 
-        {/* Placeholders — later phases */}
-        <section className="mt-6 rounded-lg border border-border bg-card p-6">
-          <h2 className="font-heading text-sm font-semibold text-foreground">AI Insight</h2>
-          <p className="mt-2 text-sm text-muted-foreground">Coming in a later phase.</p>
+        {/* AI Insight */}
+        <section className="mt-6">
+          <div className="flex items-center justify-between gap-3 px-1 pb-2">
+            <h2 className="font-heading text-sm font-semibold text-foreground">AI Insight</h2>
+            <Button
+              type="button"
+              variant="ghost"
+              size="xs"
+              className="gap-1"
+              onClick={aiInsight.regenerate}
+              disabled={aiInsight.state === "loading" || aiInsight.state === "regenerating"}
+            >
+              {aiInsight.state === "regenerating" ? (
+                <Loader2 className="size-3 animate-spin" />
+              ) : (
+                <RefreshCw className="size-3" />
+              )}
+              Regenerate
+            </Button>
+          </div>
+          <AiDecisionCard
+            subscriptionId={row.id}
+            subscriptionName={displayName}
+            category={category}
+            cost={row.cost}
+            currency={row.currency}
+            nextRenewalDate={row.next_renewal_date}
+            renewalUrgency={urgency}
+            state={aiInsight.state}
+            insight={aiInsight.insight}
+            onRegenerate={aiInsight.regenerate}
+          />
         </section>
+
+        {/* Placeholders — later phases */}
         <section className="mt-6 rounded-lg border border-border bg-card p-6">
           <h2 className="font-heading text-sm font-semibold text-foreground">Shared Members</h2>
           <p className="mt-2 text-sm text-muted-foreground">Coming in a later phase.</p>
