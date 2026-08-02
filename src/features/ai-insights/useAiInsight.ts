@@ -4,7 +4,13 @@ import { toast } from "sonner"
 import { supabase } from "@/lib/supabase"
 import { shouldRegenerateInsight, type CachedInsightRow, type FinancialImpact } from "./ai-insight-utils"
 
-export type AiInsightState = "loading" | "ready" | "unavailable" | "regenerating"
+export type AiInsightState =
+  | "loading"
+  | "ready"
+  | "unavailable"
+  | "regenerating"
+  | "suppressed-archived"
+  | "suppressed-paused"
 
 export interface AiInsight {
   recommendation: string
@@ -26,15 +32,20 @@ export function useAiInsight(subscriptionId: string): UseAiInsightResult {
   const [insight, setInsight] = useState<AiInsight | null>(null)
   const [state, setState] = useState<AiInsightState>("loading")
   const requestIdRef = useRef(0)
-  // Frontend-only guard, no backend change: workspace mode already excludes archived
-  // subscriptions via its own query; single mode had no equivalent. Blocks both the
-  // silent auto-trigger and manual Regenerate — no OpenAI call is made for an archived
-  // subscription, same neutral "unavailable" state as the AI_003 fallback.
-  const isArchivedRef = useRef(false)
+  // Frontend-only guard, no backend change: workspace mode already excludes both
+  // archived and paused subscriptions via its own query/filter (pickTopUrgent skips
+  // paused, DecisionWorkspacePage's fetch skips archived); single mode had no
+  // equivalent for either. Extends DEC-064's existing paused-deprioritization pattern
+  // (already applied to urgency, Upcoming Renewals, Recommended Reviews) to this
+  // surface. Blocks both the silent auto-trigger and manual Regenerate — no OpenAI
+  // call is made for either state, and the card shows a static, state-specific
+  // message instead of the generic "unavailable" retry state, since there's nothing
+  // to retry until the subscription's own lifecycle status changes.
+  const suppressedRef = useRef<"archived" | "paused" | null>(null)
 
   async function generate(mode: "auto" | "manual") {
-    if (isArchivedRef.current) {
-      setState("unavailable")
+    if (suppressedRef.current) {
+      setState(suppressedRef.current === "archived" ? "suppressed-archived" : "suppressed-paused")
       return
     }
 
@@ -79,12 +90,13 @@ export function useAiInsight(subscriptionId: string): UseAiInsightResult {
 
       if (requestIdRef.current !== requestId) return
 
-      const isArchived = !subError && subData?.lifecycle_status === "archived"
-      isArchivedRef.current = isArchived
+      const lifecycleStatus = subError || !subData ? null : (subData.lifecycle_status as string)
+      const suppressed = lifecycleStatus === "archived" ? "archived" : lifecycleStatus === "paused" ? "paused" : null
+      suppressedRef.current = suppressed
 
-      if (isArchived) {
+      if (suppressed) {
         setInsight(null)
-        setState("unavailable")
+        setState(suppressed === "archived" ? "suppressed-archived" : "suppressed-paused")
         return
       }
 

@@ -78,6 +78,28 @@ export function AiDecisionCard({
     )
   }
 
+  // Suppressed (Archived/Paused) — extends DEC-064's paused-deprioritization pattern
+  // to this surface. Static, state-specific copy, no Regenerate/Try-again action:
+  // there's nothing to retry until the subscription's own lifecycle status changes.
+  if (state === "suppressed-archived" || state === "suppressed-paused") {
+    return (
+      <div className={cardClasses}>
+        <div className="flex items-center gap-3">
+          <CategoryIcon category={category} className="size-9" iconClassName="size-4" />
+          <div className="min-w-0 flex-1">
+            <p className="truncate font-heading text-sm font-medium text-foreground">{subscriptionName}</p>
+            <p className="text-xs text-muted-foreground">{contextLine}</p>
+          </div>
+        </div>
+        <p className="mt-3 text-sm text-muted-foreground">
+          {state === "suppressed-paused"
+            ? "Insight resumes when this subscription is active again."
+            : "Insight unavailable for archived subscriptions."}
+        </p>
+      </div>
+    )
+  }
+
   // Unavailable/Error — AI_001/AI_002/AI_003, never a blocking error, always a neutral
   // fallback with a manual retry.
   if (!insight && state === "unavailable") {

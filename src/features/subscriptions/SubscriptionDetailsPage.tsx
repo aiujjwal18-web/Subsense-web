@@ -481,21 +481,23 @@ function SubscriptionDetailsContent({ id }: { id: string }) {
         <section className="mt-6">
           <div className="flex items-center justify-between gap-3 px-1 pb-2">
             <h2 className="font-heading text-sm font-semibold text-foreground">AI Insight</h2>
-            <Button
-              type="button"
-              variant="ghost"
-              size="xs"
-              className="gap-1"
-              onClick={aiInsight.regenerate}
-              disabled={aiInsight.state === "loading" || aiInsight.state === "regenerating"}
-            >
-              {aiInsight.state === "regenerating" ? (
-                <Loader2 className="size-3 animate-spin" />
-              ) : (
-                <RefreshCw className="size-3" />
-              )}
-              Regenerate
-            </Button>
+            {aiInsight.state !== "suppressed-archived" && aiInsight.state !== "suppressed-paused" && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="xs"
+                className="gap-1"
+                onClick={aiInsight.regenerate}
+                disabled={aiInsight.state === "loading" || aiInsight.state === "regenerating"}
+              >
+                {aiInsight.state === "regenerating" ? (
+                  <Loader2 className="size-3 animate-spin" />
+                ) : (
+                  <RefreshCw className="size-3" />
+                )}
+                Regenerate
+              </Button>
+            )}
           </div>
           <AiDecisionCard
             subscriptionId={row.id}
