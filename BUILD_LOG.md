@@ -28,6 +28,24 @@ Two things keep this current automatically:
 
 ---
 
+## 2026-08-02 — temp: add console logging to diagnose pause/resume cooldown bug
+
+**Prompt:**
+The 5-minute auto-regenerate cooldown added earlier today isn't suppressing: paused → resumed within 5 minutes → visiting the details page still fires a real OpenAI call, despite `generated_at` being confirmed well inside the cooldown window and the row having pre-existed the test (not a first-ever-generation case), and despite testing 14+ minutes after deploy (not a stale-bundle case). Asked to investigate `useAiInsight.ts`'s suppression-to-active transition path and report findings before fixing.
+
+Static trace (read both files fresh, walked the exact code order, and ran a concrete numbered timeline through `shouldRegenerateInsight`) found no "state reset to null before the check" ordering bug matching the prime suspect hypothesis — `cachedRow` is a single local `const` derived from one `Promise.all` fetch, used once in the same synchronous continuation, and `load()`'s effect only depends on `[subscriptionId]` so it only runs once per mount. The trace said the cooldown *should* suppress correctly for the described scenario. Since the user confirmed the bug reproduces anyway with the two most likely non-bug explanations (no pre-existing row, stale deploy) ruled out, the static trace exhausted what could be learned without live data — moved to instrumenting instead.
+
+**What was done:**
+- `src/features/ai-insights/useAiInsight.ts` — two temporary `console.log` calls in `load()`: one at the top logging `subscriptionId`/`requestId`/`lifecycleStatus`/`suppressed`, one right at the `shouldRegenerateInsight` call site logging the full `cachedRow` object, `subscriptionUpdatedAt`, `Date.now()`, the computed `generatedAtMs`/`msSinceGenerated`, and the boolean result — before the `if` executes. Both prefixed `[useAiInsight]` and tagged with `subscriptionId`/`requestId` so multiple hook mounts across a pause→resume→visit sequence can be told apart. Marked `TEMP DEBUG` in both places, to be reverted once the real cause is identified.
+
+**Verification:**
+- `npx tsc -b`, `npx eslint .`, `npm run build` — clean, same 4-error baseline. Frontend-only, no backend files touched, so no BR-001 re-check needed this pass.
+- **Not verified from this sandbox**: the actual bug — no browser or live Supabase connection here, so the real repro and console capture can only happen in the user's own browser against the deployed build.
+
+**Commit:** `1d2651f` — "temp: add console logging to diagnose pause/resume cooldown bug" (2026-08-02 21:50) — 1 file changed, 26 insertions(+), 1 deletion(-)
+
+---
+
 ## 2026-08-02 — Add 5-minute auto-regenerate cooldown to AI Insight staleness check
 
 **Prompt:**
@@ -1313,3 +1331,7 @@ Implement Phase 2 (Authentication and Profile) for SubSense per 16_Implementatio
 **Commit logged:** `71308a2` — "Add BUILD_LOG.md entry for Paused-suppression fix in useAiInsight" (2026-08-02 21:15) — 1 file changed, 24 insertions(+)
 
 **Commit logged:** `4f5ff30` — "Add 5-minute auto-regenerate cooldown to AI Insight staleness check" (2026-08-02 21:31) — 1 file changed, 16 insertions(+)
+
+**Commit logged:** `2d0ea3a` — "Add BUILD_LOG.md entry for auto-regenerate cooldown fix" (2026-08-02 21:31) — 1 file changed, 21 insertions(+)
+
+**Commit logged:** `1d2651f` — "temp: add console logging to diagnose pause/resume cooldown bug" (2026-08-02 21:50) — 1 file changed, 26 insertions(+), 1 deletion(-)
