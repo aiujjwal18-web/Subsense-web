@@ -28,6 +28,25 @@ Two things keep this current automatically:
 
 ---
 
+## 2026-08-02 — Fix CORS: ai-generate-insight preflight had no Access-Control headers
+
+**Prompt:**
+After Phase 7 deployed for the first time (see the entry below), the AI Insight card showed "unavailable" and "Try again" failed too. Diagnose using the real Supabase deployment/logs and browser network tab rather than guessing, and report the actual failure before calling it fixed. First diagnostic pass found the function had never been deployed at all (the whole Phase 7 branch was still uncommitted locally, so the push-triggered GitHub Actions deploy workflow had never run for it) — committed and pushed to fix that. After redeploy, the user checked the browser Network tab directly and found the real, different error: the OPTIONS preflight to `ai-generate-insight` was failing with no `Access-Control-Allow-Origin` header, so the actual POST never went out. Root cause: `ai-generate-insight` is the first Edge Function in this project actually called from a browser — both Phase 6 functions are Cron/service-role-invoked and never receive a preflight, so `_shared/http.ts` never needed CORS handling until now.
+
+**What was done:**
+- `supabase/functions/_shared/http.ts` — added a `CORS_HEADERS` constant (`Access-Control-Allow-Origin: *`, `Access-Control-Allow-Headers: authorization, x-client-info, apikey, content-type`, `Access-Control-Allow-Methods: POST, OPTIONS`); `*` is deliberate, not a shortcut — this app authenticates via a Bearer token, not cookies, so there's no CORS-credentials case that would require echoing a specific origin instead. `jsonResponse()` now merges these into every response, so `successResponse()`/`errorResponse()` get them automatically. Added `handleCorsPreflight(req)`, returning a 204 with those headers for `OPTIONS`, `null` otherwise.
+- `supabase/functions/ai-generate-insight/index.ts` — calls `handleCorsPreflight(req)` as the first thing in `Deno.serve`, before auth or any other logic.
+- Phase 6's two functions' `index.ts` files were deliberately not touched — they're never browser-invoked, so no preflight is ever sent to them; only the shared `_shared/http.ts` change passively reaches them (harmless extra response headers on server-to-server calls, not a behavior change).
+
+**Verification:**
+- BR-001/GP-002 write-scope re-check on `ai-generate-insight/index.ts` (changed again) — still exactly the same two `.insert()` calls (`ai_recommendations`, `audit_logs`), nothing else.
+- `npx eslint` on both changed files, `npx tsc -b`, `npx eslint .`, `npm run build` — all clean, same 4-error baseline.
+- **Not verified from this sandbox**: no browser, no Supabase dashboard/CLI access here — the actual CORS failure and this fix were diagnosed and will be confirmed entirely via the user's own browser Network tab and the Supabase deployment, not from this environment.
+
+**Commit:** `17dbdae` — "Fix CORS: browser preflight to ai-generate-insight had no Access-Control headers" (2026-08-02 20:41) — 2 files changed, 25 insertions(+), 2 deletions(-)
+
+---
+
 ## 2026-08-02 — Phase 7: AI Decision Support — `ai-generate-insight` + AI Decision Card
 
 **Prompt:**
@@ -1221,3 +1240,7 @@ Implement Phase 2 (Authentication and Profile) for SubSense per 16_Implementatio
 **Commit logged:** `b574d64` — "Wire real AI Insight into SubscriptionDetailsPage" (2026-08-02 20:24) — 1 file changed, 42 insertions(+), 5 deletions(-)
 
 **Commit logged:** `f011925` — "Merge AI Insights + Recommended Reviews into one real section (DEC-067)" (2026-08-02 20:24) — 1 file changed, 56 insertions(+), 17 deletions(-)
+
+**Commit logged:** `a52277d` — "Add BUILD_LOG.md entry for Phase 7 AI Decision Support (ai-generate-insight, AI Decision Card)" (2026-08-02 20:25) — 1 file changed, 54 insertions(+)
+
+**Commit logged:** `17dbdae` — "Fix CORS: browser preflight to ai-generate-insight had no Access-Control headers" (2026-08-02 20:41) — 2 files changed, 25 insertions(+), 2 deletions(-)
