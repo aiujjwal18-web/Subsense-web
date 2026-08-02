@@ -94,16 +94,6 @@ export function useAiInsight(subscriptionId: string): UseAiInsightResult {
       const suppressed = lifecycleStatus === "archived" ? "archived" : lifecycleStatus === "paused" ? "paused" : null
       suppressedRef.current = suppressed
 
-      // TEMP DEBUG — remove after diagnosing the pause/resume cooldown bug.
-      console.log("[useAiInsight] load() top", {
-        subscriptionId,
-        requestId,
-        lifecycleStatus,
-        suppressed,
-        subError,
-        at: new Date().toISOString(),
-      })
-
       if (suppressed) {
         setInsight(null)
         setState(suppressed === "archived" ? "suppressed-archived" : "suppressed-paused")
@@ -122,22 +112,7 @@ export function useAiInsight(subscriptionId: string): UseAiInsightResult {
         setState("ready")
       }
 
-      const shouldRegenerate = shouldRegenerateInsight(cachedRow, subscriptionUpdatedAt)
-
-      // TEMP DEBUG — remove after diagnosing the pause/resume cooldown bug.
-      console.log("[useAiInsight] shouldRegenerateInsight call site", {
-        subscriptionId,
-        requestId,
-        cachedRow,
-        subscriptionUpdatedAt,
-        nowMs: Date.now(),
-        nowIso: new Date().toISOString(),
-        generatedAtMs: cachedRow ? new Date(cachedRow.generated_at).getTime() : null,
-        msSinceGenerated: cachedRow ? Date.now() - new Date(cachedRow.generated_at).getTime() : null,
-        shouldRegenerate,
-      })
-
-      if (shouldRegenerate) {
+      if (shouldRegenerateInsight(cachedRow, subscriptionUpdatedAt)) {
         await generate("auto")
       }
     }
