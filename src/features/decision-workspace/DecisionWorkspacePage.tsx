@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react"
 import { motion } from "motion/react"
-import { Plus } from "lucide-react"
+import { Loader2, Plus, RefreshCw } from "lucide-react"
 import { Link, useNavigate } from "react-router-dom"
 
 import { CategoryIcon } from "@/components/subscriptions/CategoryIcon"
 import { GlowingEffect } from "@/components/subscriptions/GlowingEffect"
 import { RenewalUrgencyBadge } from "@/components/subscriptions/RenewalUrgencyBadge"
 import { Button } from "@/components/ui/button"
+import { AiDecisionCard } from "@/features/ai-insights/AiDecisionCard"
+import { useWorkspaceAiInsights } from "@/features/ai-insights/useWorkspaceAiInsights"
 import { staggerItemMotion } from "@/lib/motion"
 import { supabase } from "@/lib/supabase"
 import {
@@ -75,6 +77,11 @@ export function DecisionWorkspacePage() {
   const navigate = useNavigate()
   const [rows, setRows] = useState<SubscriptionRow[]>([])
   const [state, setState] = useState<LoadState>("loading")
+
+  // Called unconditionally (before the loading/error early returns below) — hooks
+  // can't be called after a conditional return. Runs fine against the initial empty
+  // `rows` and re-derives its top-3-urgent selection once the fetch below populates it.
+  const workspaceInsights = useWorkspaceAiInsights(rows)
 
   useEffect(() => {
     let cancelled = false
@@ -192,12 +199,54 @@ export function DecisionWorkspacePage() {
           )}
         </section>
 
-        {/* AI Insights */}
-        <section className="mt-6 rounded-lg border border-border bg-card p-6">
-          <h2 className="font-heading text-sm font-semibold text-foreground">AI Insights</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            AI insights will appear here once you have renewals coming up.
-          </p>
+        {/* AI Insights — merged concept per DEC-067, replaces the former separate
+            "AI Insights"/"Recommended Reviews" placeholders */}
+        <section className="mt-6">
+          <div className="flex items-center justify-between gap-3 px-1 pb-2">
+            <h2 className="font-heading text-sm font-semibold text-foreground">AI Insights</h2>
+            {workspaceInsights.candidates.length > 0 && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="xs"
+                className="gap-1"
+                onClick={workspaceInsights.regenerate}
+              >
+                {[...workspaceInsights.entries.values()].some((entry) => entry.state === "regenerating") ? (
+                  <Loader2 className="size-3 animate-spin" />
+                ) : (
+                  <RefreshCw className="size-3" />
+                )}
+                Regenerate
+              </Button>
+            )}
+          </div>
+          {workspaceInsights.candidates.length === 0 ? (
+            <div className="rounded-lg border border-border bg-card p-6">
+              <p className="text-sm text-muted-foreground">Nothing urgent to review right now.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {workspaceInsights.candidates.map((row) => {
+                const entry = workspaceInsights.entries.get(row.id)
+                return (
+                  <AiDecisionCard
+                    key={row.id}
+                    subscriptionId={row.id}
+                    subscriptionName={getDisplayName(row)}
+                    category={getCategoryName(row)}
+                    cost={row.cost}
+                    currency={row.currency}
+                    nextRenewalDate={row.next_renewal_date}
+                    renewalUrgency={computeRenewalUrgency(row.next_renewal_date, row.lifecycle_status)}
+                    state={entry?.state ?? "loading"}
+                    insight={entry?.insight ?? null}
+                    onRegenerate={workspaceInsights.regenerate}
+                  />
+                )
+              })}
+            </div>
+          )}
         </section>
 
         {/* Upcoming Renewals */}
@@ -226,16 +275,6 @@ export function DecisionWorkspacePage() {
               ))}
             </div>
           )}
-        </section>
-
-        {/* Recommended Reviews */}
-        <section className="mt-6 rounded-lg border border-border bg-card p-6">
-          <h2 className="font-heading text-sm font-semibold text-foreground">
-            Recommended Reviews
-          </h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Recommended reviews will appear here once there's something worth your attention.
-          </p>
         </section>
 
         {/* Shared Payment Activity */}
