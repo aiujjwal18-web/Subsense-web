@@ -8,6 +8,17 @@ import { Button } from "@/components/ui/button"
 import { CategoryIcon } from "@/components/subscriptions/CategoryIcon"
 import { AiDecisionCard } from "@/features/ai-insights/AiDecisionCard"
 import { useAiInsight } from "@/features/ai-insights/useAiInsight"
+import { AddEditMemberForm } from "@/components/shared-subscriptions/AddEditMemberForm"
+import { ConfirmDialog } from "@/components/shared-subscriptions/ConfirmDialog"
+import { PaymentRequestItem } from "@/components/shared-subscriptions/PaymentRequestItem"
+import { SharedMemberRow } from "@/components/shared-subscriptions/SharedMemberRow"
+import { useSharedSubscription, type AddEditMemberInput } from "@/features/shared-subscriptions/useSharedSubscription"
+import {
+  SPLIT_METHOD_LABEL,
+  getMemberDisplayName,
+  type SharedMemberRow as SharedMemberRowData,
+  type SplitMethod,
+} from "@/features/shared-subscriptions/shared-subscription-utils"
 import {
   Dialog,
   DialogClose,
@@ -87,6 +98,15 @@ function SubscriptionDetailsContent({ id }: { id: string }) {
   // hooks can't be called after a conditional return. useAiInsight only needs `id`,
   // not the loaded `row`, so it can run independently of the subscription fetch above.
   const aiInsight = useAiInsight(id)
+  // Same reasoning applies here — the "INR" fallback only matters until `row` loads;
+  // every UI path that can actually call createShare() only renders once `row` (and
+  // therefore its real currency) is already available.
+  const sharedSub = useSharedSubscription(id, row?.currency ?? "INR")
+
+  const [shareSetupOpen, setShareSetupOpen] = useState(false)
+  const [addMemberOpen, setAddMemberOpen] = useState(false)
+  const [editingMember, setEditingMember] = useState<SharedMemberRowData | null>(null)
+  const [removingMember, setRemovingMember] = useState<SharedMemberRowData | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -196,6 +216,26 @@ function SubscriptionDetailsContent({ id }: { id: string }) {
     }
     toast.success("Subscription archived")
     navigate("/subscriptions")
+  }
+
+  async function handleCreateShare(splitMethod: SplitMethod) {
+    const ok = await sharedSub.createShare(splitMethod)
+    if (ok) setShareSetupOpen(false)
+  }
+
+  async function handleAddMemberSubmit(input: AddEditMemberInput) {
+    return sharedSub.addMember(input)
+  }
+
+  async function handleEditMemberSubmit(input: AddEditMemberInput) {
+    if (!editingMember) return false
+    return sharedSub.editMember(editingMember.id, input)
+  }
+
+  async function handleConfirmRemoveMember() {
+    if (!removingMember) return
+    const ok = await sharedSub.removeMember(removingMember.id)
+    if (ok) setRemovingMember(null)
   }
 
   if (loadState === "loading") {
@@ -513,16 +553,167 @@ function SubscriptionDetailsContent({ id }: { id: string }) {
           />
         </section>
 
-        {/* Placeholders — later phases */}
+        {/* Shared Members — DEC-080: "Manage sharing" is the single entry point for both
+            first-time setup and ongoing management, not a separate flow. */}
         <section className="mt-6 rounded-lg border border-border bg-card p-6">
-          <h2 className="font-heading text-sm font-semibold text-foreground">Shared Members</h2>
-          <p className="mt-2 text-sm text-muted-foreground">Coming in a later phase.</p>
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="font-heading text-sm font-semibold text-foreground">Shared Members</h2>
+            {sharedSub.state === "ready" && sharedSub.isOwner && (
+              <Button type="button" variant="outline" size="sm" onClick={() => setAddMemberOpen(true)}>
+                Add member
+              </Button>
+            )}
+          </div>
+
+          {sharedSub.state === "loading" && (
+            <p className="mt-2 text-sm text-muted-foreground">Loading…</p>
+          )}
+
+          {sharedSub.state === "error" && (
+            <p className="mt-2 text-sm text-muted-foreground">Couldn't load sharing details. Please try again.</p>
+          )}
+
+          {sharedSub.state === "notShared" && (
+            <>
+              <p className="mt-2 text-sm text-muted-foreground">
+                This subscription isn't shared with anyone yet.
+              </p>
+              <Button type="button" size="sm" className="mt-3" onClick={() => setShareSetupOpen(true)}>
+                Share this subscription
+              </Button>
+            </>
+          )}
+
+          {sharedSub.state === "ready" && sharedSub.sharedSubscription && (
+            <>
+              {sharedSub.members.length === 0 ? (
+                <p className="mt-2 text-sm text-muted-foreground">
+                  No members yet — add one to start splitting this cost.
+                </p>
+              ) : (
+                <div className="mt-4 space-y-2">
+                  {sharedSub.members.map((member) => (
+                    <SharedMemberRow
+                      key={member.id}
+                      member={member}
+                      splitMethod={sharedSub.sharedSubscription!.split_method}
+                      isOwner={sharedSub.isOwner}
+                      onEdit={() => setEditingMember(member)}
+                      onRemove={() => setRemovingMember(member)}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {sharedSub.paymentRequests.length > 0 && (
+                <div className="mt-6">
+                  <h3 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                    Payment requests
+                  </h3>
+                  <div className="mt-2 space-y-2">
+                    {sharedSub.paymentRequests.map((request) => (
+                      <PaymentRequestItem
+                        key={request.id}
+                        request={request}
+                        memberName={getMemberDisplayName(
+                          request.shared_members ?? { display_name: null, email: null }
+                        )}
+                        isOwner={sharedSub.isOwner}
+                        isSelf={false}
+                        onOwnerMarkPaid={() => sharedSub.ownerMarkPaid(request.id)}
+                        onReportPaid={() => sharedSub.reportPaid(request.id)}
+                        onSendReminder={() => sharedSub.sendReminder(request.id)}
+                        mutating={sharedSub.mutating}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
         </section>
+
+        {/* Reminder Context — later phase */}
         <section className="mt-6 rounded-lg border border-border bg-card p-6">
           <h2 className="font-heading text-sm font-semibold text-foreground">Reminder Context</h2>
           <p className="mt-2 text-sm text-muted-foreground">Coming in a later phase.</p>
         </section>
       </div>
+
+      {/* Share setup — split-method picker, first-time only */}
+      <Dialog open={shareSetupOpen} onOpenChange={setShareSetupOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Share {displayName}</DialogTitle>
+            <DialogDescription>
+              Pick how the cost splits. You can add members right after.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-2">
+            {(Object.entries(SPLIT_METHOD_LABEL) as [SplitMethod, string][]).map(([value, label]) => (
+              <Button
+                key={value}
+                type="button"
+                variant="outline"
+                className="justify-start"
+                disabled={sharedSub.mutating}
+                onClick={() => handleCreateShare(value)}
+              >
+                {label}
+              </Button>
+            ))}
+          </div>
+          <DialogFooter>
+            <DialogClose render={<Button type="button" variant="outline" />}>Cancel</DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {sharedSub.sharedSubscription && (
+        <AddEditMemberForm
+          key={addMemberOpen ? "add-open" : "add-closed"}
+          open={addMemberOpen}
+          onOpenChange={setAddMemberOpen}
+          mode="add"
+          splitMethod={sharedSub.sharedSubscription.split_method}
+          currency={sharedSub.sharedSubscription.currency}
+          onSubmit={handleAddMemberSubmit}
+          submitting={sharedSub.mutating}
+        />
+      )}
+
+      {sharedSub.sharedSubscription && editingMember && (
+        <AddEditMemberForm
+          key={editingMember.id}
+          open={editingMember != null}
+          onOpenChange={(open) => {
+            if (!open) setEditingMember(null)
+          }}
+          mode="edit"
+          splitMethod={sharedSub.sharedSubscription.split_method}
+          currency={sharedSub.sharedSubscription.currency}
+          initialValues={{
+            displayName: editingMember.display_name ?? "",
+            email: editingMember.email ?? "",
+            amountOwed: editingMember.amount_owed,
+          }}
+          onSubmit={handleEditMemberSubmit}
+          submitting={sharedSub.mutating}
+        />
+      )}
+
+      <ConfirmDialog
+        open={removingMember != null}
+        onOpenChange={(open) => {
+          if (!open) setRemovingMember(null)
+        }}
+        title={`Remove ${removingMember ? getMemberDisplayName(removingMember) : "this member"} from the split?`}
+        description="Their payment history stays visible below — this only stops new payment requests from going to them."
+        confirmLabel="Remove"
+        confirmVariant="destructive"
+        confirming={sharedSub.mutating}
+        onConfirm={handleConfirmRemoveMember}
+      />
     </div>
   )
 }

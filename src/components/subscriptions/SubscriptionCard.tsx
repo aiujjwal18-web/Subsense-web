@@ -235,6 +235,7 @@ export function SubscriptionCard({
             open={markPaidOpen}
             onOpenChange={setMarkPaidOpen}
             id={id}
+            name={name}
             nextRenewalDate={nextRenewalDateStr}
             billingFrequency={billingFrequency}
             customIntervalDays={customIntervalDays}

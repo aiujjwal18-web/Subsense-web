@@ -9,7 +9,9 @@ const CONCURRENCY = 12
 
 interface ReminderRow {
   id: string
-  user_id: string
+  // Nullable since Phase 8 (DEC-080 planning-pass gap #2): a shared_payment reminder for
+  // an unlinked shared_members row (no SubSense account) has no users.id to attach to.
+  user_id: string | null
   subscription_id: string | null
   payment_request_id: string | null
   reminder_type: string
@@ -44,6 +46,9 @@ interface PaymentRequestContextRow {
       subscription_catalog: { name: string } | null
     } | null
   } | null
+  // Unlinked-member recipient fallback (Phase 8 gap #2) — email is the only path to this
+  // member when reminder.user_id is null; users.email is unavailable for them entirely.
+  shared_members: { email: string | null; display_name: string | null } | null
 }
 
 function formatMoney(amount: number, currency: string): string {
@@ -145,8 +150,10 @@ Deno.serve(async (req) => {
     .eq("is_active", true)
   const templateByCode = new Map((templates ?? []).map((t) => [t.template_code as string, t]))
 
-  const userIds = [...new Set(claimed.map((r) => r.user_id))]
-  const { data: users } = await supabaseAdmin.from("users").select("id, email").in("id", userIds)
+  const userIds = [...new Set(claimed.map((r) => r.user_id).filter((id): id is string => Boolean(id)))]
+  const { data: users } = userIds.length
+    ? await supabaseAdmin.from("users").select("id, email").in("id", userIds)
+    : { data: [] as { id: string; email: string }[] }
   const userById = new Map((users ?? []).map((u) => [u.id as string, u]))
 
   const subscriptionIds = [...new Set(claimed.map((r) => r.subscription_id).filter((id): id is string => Boolean(id)))]
@@ -167,7 +174,7 @@ Deno.serve(async (req) => {
     ? await supabaseAdmin
         .from("payment_requests")
         .select(
-          "id, amount, currency, shared_subscriptions(subscriptions(custom_name, subscription_catalog(name)))"
+          "id, amount, currency, shared_subscriptions(subscriptions(custom_name, subscription_catalog(name))), shared_members(email, display_name)"
         )
         .in("id", paymentRequestIds)
     : { data: [] as PaymentRequestContextRow[] }
@@ -243,6 +250,19 @@ Deno.serve(async (req) => {
     return null
   }
 
+  // user_id is nullable for a shared_payment reminder whose shared_members row has no
+  // linked SubSense account (Phase 8, DEC-080 planning-pass gap #2) — fall back to
+  // shared_members.email in that case, since users.email is unavailable for them.
+  function resolveRecipientEmail(reminder: ReminderRow): string | null {
+    if (reminder.user_id) {
+      return userById.get(reminder.user_id)?.email ?? null
+    }
+    if (reminder.payment_request_id) {
+      return paymentRequestById.get(reminder.payment_request_id)?.shared_members?.email ?? null
+    }
+    return null
+  }
+
   async function recordFailure(
     reminder: ReminderRow,
     classification: "retryable" | "terminal",
@@ -285,13 +305,13 @@ Deno.serve(async (req) => {
   }
 
   async function processReminder(reminder: ReminderRow): Promise<ProcessResult> {
-    const user = userById.get(reminder.user_id)
+    const recipientEmail = resolveRecipientEmail(reminder)
     const templateCode = `reminder_${reminder.reminder_type}`
     const template = templateByCode.get(templateCode)
 
-    if (!user?.email || !template) {
-      const errorCode = !user?.email ? "USER_EMAIL_MISSING" : "TEMPLATE_MISSING"
-      const errorMessage = !user?.email ? "No user or email on file." : `No active template for ${templateCode}.`
+    if (!recipientEmail || !template) {
+      const errorCode = !recipientEmail ? "USER_EMAIL_MISSING" : "TEMPLATE_MISSING"
+      const errorMessage = !recipientEmail ? "No user or email on file." : `No active template for ${templateCode}.`
       await recordFailure(reminder, "terminal", errorCode, errorMessage, template?.id ?? null)
       return { reminder_id: reminder.id, status: "failed", error: { code: errorCode, message: errorMessage } }
     }
@@ -330,7 +350,7 @@ Deno.serve(async (req) => {
     const rendered = renderEmail(template.subject, template.body, context, appUrl, reminder.reminder_type)
     const result = await sendWithRetry({
       from: `SubSense <${fromAddress}>`,
-      to: user.email,
+      to: recipientEmail,
       subject: rendered.subject,
       html: rendered.html,
     })

@@ -23,6 +23,7 @@ interface MarkPaidDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   id: string
+  name: string
   nextRenewalDate: string
   billingFrequency: BillingFrequency
   customIntervalDays?: number
@@ -34,6 +35,13 @@ interface MarkPaidDialogProps {
 // payment date is later), with a confirm step before the write, per doc 05's
 // confirm-before-meaningful-data-impact rule. lifecycle_status is deliberately untouched.
 //
+// `name` names the subscription in the dialog's own copy (Phase 8 naming-disambiguation
+// fix): C-021 Payment Request Item introduces a second, different "Mark Paid" meaning —
+// "this shared member paid me back," not "I paid the provider" — so this dialog's title
+// and success toast now say "Mark [subscription] as paid" rather than the bare, generic
+// "Mark as paid" they used before, so the two are never visually interchangeable anywhere
+// a user might see both.
+//
 // step/paymentDate reset to their defaults on every open, not just first mount — the call
 // site remounts this component on each open/close transition via a toggling `key`, per
 // React's own guidance for "reset state when X changes" (an effect that resets state in
@@ -42,6 +50,7 @@ export function MarkPaidDialog({
   open,
   onOpenChange,
   id,
+  name,
   nextRenewalDate,
   billingFrequency,
   customIntervalDays,
@@ -66,7 +75,7 @@ export function MarkPaidDialog({
       toast.error("Couldn't update the renewal date. Please try again.")
       return
     }
-    toast.success("Subscription marked as paid")
+    toast.success(`${name} marked as paid`)
     onOpenChange(false)
     onUpdated?.()
   }
@@ -77,7 +86,7 @@ export function MarkPaidDialog({
         {step === "pick" ? (
           <>
             <DialogHeader>
-              <DialogTitle>Mark as paid</DialogTitle>
+              <DialogTitle>Mark {name} as paid</DialogTitle>
               <DialogDescription>When was this payment made?</DialogDescription>
             </DialogHeader>
             <div>
