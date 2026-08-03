@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { Loader2, Pencil, RefreshCw } from "lucide-react"
-import { Link, useNavigate, useParams } from "react-router-dom"
+import { Link, Navigate, useNavigate, useParams } from "react-router-dom"
 import { toast } from "sonner"
 
 import { Badge } from "@/components/ui/badge"
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { CategoryIcon } from "@/components/subscriptions/CategoryIcon"
 import { AiDecisionCard } from "@/features/ai-insights/AiDecisionCard"
 import { useAiInsight } from "@/features/ai-insights/useAiInsight"
+import { useAuth } from "@/features/auth/AuthContext"
 import { AddEditMemberForm } from "@/components/shared-subscriptions/AddEditMemberForm"
 import { ConfirmDialog } from "@/components/shared-subscriptions/ConfirmDialog"
 import { PaymentRequestItem } from "@/components/shared-subscriptions/PaymentRequestItem"
@@ -77,6 +78,7 @@ export function SubscriptionDetailsPage() {
 
 function SubscriptionDetailsContent({ id }: { id: string }) {
   const navigate = useNavigate()
+  const { appUser } = useAuth()
 
   const [row, setRow] = useState<SubscriptionRow | null>(null)
   const [loadState, setLoadState] = useState<LoadState>("loading")
@@ -203,13 +205,19 @@ function SubscriptionDetailsContent({ id }: { id: string }) {
   async function handleArchive() {
     if (!row) return
     setArchiving(true)
-    const { error } = await supabase
+    // .select().maybeSingle() (not a bare .update()) so a write RLS silently blocks —
+    // e.g. a non-owner whose UPDATE's WHERE clause matches zero rows, no Postgres error —
+    // is distinguishable from a real success. RLS doesn't throw on a blocked UPDATE, it
+    // just matches nothing; checking {error} alone would report "Archived" regardless.
+    const { data, error } = await supabase
       .from("subscriptions")
       .update({ lifecycle_status: "archived", archived_at: new Date().toISOString() })
       .eq("id", row.id)
+      .select("id")
+      .maybeSingle()
     setArchiving(false)
 
-    if (error) {
+    if (error || !data) {
       setFormError("Couldn't archive this subscription. Please try again.")
       toast.error("Couldn't archive this subscription. Please try again.")
       return
@@ -271,6 +279,18 @@ function SubscriptionDetailsContent({ id }: { id: string }) {
   const category = getCategoryName(row)
   const urgency = computeRenewalUrgency(row.next_renewal_date, row.lifecycle_status)
   const isArchived = row.lifecycle_status === "archived"
+  // subscriptions_select_shared_member (file 34) made this page reachable by a linked
+  // member for the first time — it was previously owner-only by RLS. This page was
+  // designed as an owner-only surface (doc 10: a linked member's real access point is
+  // SharedSubscriptionsPage, not this page) — so rather than rendering a stripped-down
+  // read-only version for a non-owner, redirect them away entirely once ownership is known
+  // (below). Data can be read under the new RLS grant; that's a separate question from
+  // which page should render it.
+  const isOwner = appUser != null && row.user_id === appUser.id
+
+  if (!isOwner) {
+    return <Navigate to="/shared" replace />
+  }
 
   return (
     <div className="px-6 py-12">
@@ -292,7 +312,7 @@ function SubscriptionDetailsContent({ id }: { id: string }) {
               </p>
             </div>
           </div>
-          {!editing && !isArchived && (
+          {isOwner && !editing && !isArchived && (
             <Button type="button" variant="outline" size="sm" onClick={startEditing} className="gap-1.5">
               <Pencil className="size-3.5" />
               Edit
@@ -488,7 +508,7 @@ function SubscriptionDetailsContent({ id }: { id: string }) {
             <p className="mt-3 text-sm text-muted-foreground">
               Archived {row.archived_at ? new Date(row.archived_at).toLocaleDateString() : ""}
             </p>
-          ) : (
+          ) : isOwner ? (
             <Dialog>
               <DialogTrigger
                 render={
@@ -514,7 +534,7 @@ function SubscriptionDetailsContent({ id }: { id: string }) {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
-          )}
+          ) : null}
         </section>
 
         {/* AI Insight */}

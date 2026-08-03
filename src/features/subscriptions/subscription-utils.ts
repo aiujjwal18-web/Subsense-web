@@ -22,11 +22,17 @@ export interface CatalogRef {
 // details pages so the two never drift out of sync.
 // Per DEC-059, logo_url is deprecated and never read here — category is fetched
 // instead, to drive the fixed generic category icon (CategoryIcon).
+// user_id (Phase 8 fix): since 34_SubSense_Shared_Member_Subscription_Visibility_v1.0.sql
+// gave linked members SELECT access to a subscription they don't own,
+// SubscriptionDetailsPage.tsx needs this to gate owner-only controls (Edit, Archive) for
+// a non-owner viewer — RLS controls what data can be read, not which UI actions should be
+// shown for it.
 export const SUBSCRIPTION_SELECT_COLUMNS =
-  "id, catalog_id, custom_name, cost, currency, billing_frequency, custom_interval_days, next_renewal_date, payment_method, payment_reference_note, lifecycle_status, monthly_equivalent, annual_equivalent, archived_at, created_at, subscription_catalog(name, category:subscription_categories(name))"
+  "id, user_id, catalog_id, custom_name, cost, currency, billing_frequency, custom_interval_days, next_renewal_date, payment_method, payment_reference_note, lifecycle_status, monthly_equivalent, annual_equivalent, archived_at, created_at, subscription_catalog(name, category:subscription_categories(name))"
 
 export interface SubscriptionRow {
   id: string
+  user_id: string
   catalog_id: string | null
   custom_name: string | null
   cost: number

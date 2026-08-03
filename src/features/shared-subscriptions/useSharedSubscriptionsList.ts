@@ -74,7 +74,14 @@ export function useSharedSubscriptionsList(): UseSharedSubscriptionsListResult {
     async function load() {
       const { data: sharedSubs, error: sharedSubsError } = await supabase
         .from("shared_subscriptions")
-        .select(`${SHARED_SUBSCRIPTION_SELECT_COLUMNS}, subscriptions(custom_name, subscription_catalog(name))`)
+        // subscriptions!left (not the plain embed): shared_subscriptions.subscription_id is
+        // NOT NULL, so PostgREST's default embed for this relationship is inner-join-like —
+        // if the embedded subscriptions row were ever invisible to the caller's RLS (e.g. a
+        // future policy change), the whole parent row would silently vanish from the result,
+        // exactly as it did for every linked member before 34_SubSense_Shared_Member_
+        // Subscription_Visibility_v1.0.sql added their SELECT grant. !left is defense in
+        // depth on top of that grant, not a substitute for it.
+        .select(`${SHARED_SUBSCRIPTION_SELECT_COLUMNS}, subscriptions!left(custom_name, subscription_catalog(name))`)
         .is("archived_at", null)
         .order("created_at", { ascending: false })
 
@@ -154,12 +161,20 @@ export function useSharedSubscriptionsList(): UseSharedSubscriptionsListResult {
     load()
   }, [appUser, reloadTrigger])
 
-  async function runMutation(action: () => PromiseLike<{ error: unknown }>, failureMessage: string): Promise<boolean> {
+  // Every action passed here must end in .select() so `data` actually reflects what was
+  // written — RLS silently matches zero rows on a blocked write instead of throwing, so
+  // {error} alone can't distinguish a real success from one that touched nothing.
+  async function runMutation(
+    action: () => PromiseLike<{ error: unknown; data: unknown }>,
+    failureMessage: string
+  ): Promise<boolean> {
     setMutating(true)
-    const { error } = await action()
+    const { error, data } = await action()
     setMutating(false)
 
-    if (error) {
+    const rowsAffected = Array.isArray(data) ? data.length : data != null ? 1 : 0
+
+    if (error || rowsAffected === 0) {
       toast.error(failureMessage)
       return false
     }
@@ -170,7 +185,13 @@ export function useSharedSubscriptionsList(): UseSharedSubscriptionsListResult {
 
   async function ownerMarkPaid(paymentRequestId: string): Promise<boolean> {
     return runMutation(
-      () => supabase.from("payment_requests").update({ status: "paid" }).eq("id", paymentRequestId),
+      () =>
+        supabase
+          .from("payment_requests")
+          .update({ status: "paid" })
+          .eq("id", paymentRequestId)
+          .select("id")
+          .maybeSingle(),
       "Couldn't mark this payment as received. Please try again."
     )
   }
@@ -181,7 +202,9 @@ export function useSharedSubscriptionsList(): UseSharedSubscriptionsListResult {
         supabase
           .from("payment_requests")
           .update({ status: "paid_pending_confirmation", member_marked_paid_at: new Date().toISOString() })
-          .eq("id", paymentRequestId),
+          .eq("id", paymentRequestId)
+          .select("id")
+          .maybeSingle(),
       "Couldn't report this payment. Please try again."
     )
   }

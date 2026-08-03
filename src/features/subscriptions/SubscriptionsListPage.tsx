@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom"
 
 import { SubscriptionCard } from "@/components/subscriptions/SubscriptionCard"
 import { Button } from "@/components/ui/button"
+import { useAuth } from "@/features/auth/AuthContext"
 import { staggerItemMotion } from "@/lib/motion"
 import { supabase } from "@/lib/supabase"
 import {
@@ -19,14 +20,20 @@ type LoadState = "loading" | "error" | "ready"
 
 export function SubscriptionsListPage() {
   const navigate = useNavigate()
+  const { appUser } = useAuth()
   const [rows, setRows] = useState<SubscriptionRow[]>([])
   const [state, setState] = useState<LoadState>("loading")
 
-  async function load() {
+  async function load(userId: string) {
     setState("loading")
+    // Explicit .eq("user_id", ...) — subscriptions_select_shared_member (file 34) is a
+    // second, additive RLS policy, so RLS alone no longer means "this is mine": without
+    // this filter, "My Subscriptions" would also include subscriptions the caller is
+    // merely a shared member of.
     const { data, error } = await supabase
       .from("subscriptions")
       .select(SUBSCRIPTION_SELECT_COLUMNS)
+      .eq("user_id", userId)
       .neq("lifecycle_status", "archived")
       .order("next_renewal_date", { ascending: true })
 
@@ -40,11 +47,15 @@ export function SubscriptionsListPage() {
   }
 
   useEffect(() => {
+    // appUser can briefly be null even once ProtectedRoute has let this page mount (a rare
+    // users-row-provisioning race in AuthContext) — wait for it rather than fetching with
+    // an undefined filter. The effect re-runs once appUser resolves.
+    if (!appUser) return
     async function run() {
-      await load()
+      await load(appUser!.id)
     }
     run()
-  }, [])
+  }, [appUser])
 
   return (
     <div className="px-6 py-12">
@@ -104,7 +115,7 @@ export function SubscriptionsListPage() {
                   lifecycleStatus={row.lifecycle_status}
                   renewalUrgency={computeRenewalUrgency(row.next_renewal_date, row.lifecycle_status)}
                   onClick={() => navigate(`/subscriptions/${row.id}`)}
-                  onUpdated={load}
+                  onUpdated={() => appUser && load(appUser.id)}
                 />
               </motion.div>
             ))}

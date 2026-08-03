@@ -127,12 +127,22 @@ export function useSharedSubscription(
     load()
   }, [subscriptionId, reloadTrigger])
 
-  async function runMutation(action: () => PromiseLike<{ error: unknown }>, failureMessage: string): Promise<boolean> {
+  // Every action passed here must end in .select() so `data` actually reflects what was
+  // written — RLS silently matches zero rows on a blocked write instead of throwing, so
+  // {error} alone can't distinguish a real success from one that touched nothing (a linked
+  // member's blocked edit/removal previously reported "success" this way). Treats an
+  // empty array or null `data` as failure the same as a real error.
+  async function runMutation(
+    action: () => PromiseLike<{ error: unknown; data: unknown }>,
+    failureMessage: string
+  ): Promise<boolean> {
     setMutating(true)
-    const { error } = await action()
+    const { error, data } = await action()
     setMutating(false)
 
-    if (error) {
+    const rowsAffected = Array.isArray(data) ? data.length : data != null ? 1 : 0
+
+    if (error || rowsAffected === 0) {
       toast.error(failureMessage)
       return false
     }
@@ -145,12 +155,16 @@ export function useSharedSubscription(
     if (!appUser) return false
     return runMutation(
       () =>
-        supabase.from("shared_subscriptions").insert({
-          subscription_id: subscriptionId,
-          owner_user_id: appUser?.id,
-          split_method: splitMethod,
-          currency: subscriptionCurrency,
-        }),
+        supabase
+          .from("shared_subscriptions")
+          .insert({
+            subscription_id: subscriptionId,
+            owner_user_id: appUser?.id,
+            split_method: splitMethod,
+            currency: subscriptionCurrency,
+          })
+          .select("id")
+          .single(),
       "Couldn't set up sharing for this subscription. Please try again."
     )
   }
@@ -159,17 +173,21 @@ export function useSharedSubscription(
     if (!sharedSubscription) return false
     return runMutation(
       () =>
-        supabase.from("shared_members").insert({
-          shared_subscription_id: sharedSubscription.id,
-          display_name: input.displayName.trim() || null,
-          email: input.email.trim() || null,
-          // For an 'equal' split this is a placeholder — the shared_members insert
-          // trigger recomputes every active member's amount_owed right after this insert
-          // commits (31_SubSense_Shared_Payment_Requests_v1.0.sql), so the value here is
-          // never what's actually shown once `load()` refetches below.
-          amount_owed: input.amountOwed,
-          currency: sharedSubscription.currency,
-        }),
+        supabase
+          .from("shared_members")
+          .insert({
+            shared_subscription_id: sharedSubscription.id,
+            display_name: input.displayName.trim() || null,
+            email: input.email.trim() || null,
+            // For an 'equal' split this is a placeholder — the shared_members insert
+            // trigger recomputes every active member's amount_owed right after this insert
+            // commits (31_SubSense_Shared_Payment_Requests_v1.0.sql), so the value here is
+            // never what's actually shown once `load()` refetches below.
+            amount_owed: input.amountOwed,
+            currency: sharedSubscription.currency,
+          })
+          .select("id")
+          .single(),
       "Couldn't add this member. Please try again."
     )
   }
@@ -187,7 +205,9 @@ export function useSharedSubscription(
             // component only renders this field editable in that case (doc 06 C-020).
             amount_owed: input.amountOwed,
           })
-          .eq("id", memberId),
+          .eq("id", memberId)
+          .select("id")
+          .maybeSingle(),
       "Couldn't save this member's details. Please try again."
     )
   }
@@ -198,14 +218,22 @@ export function useSharedSubscription(
         supabase
           .from("shared_members")
           .update({ status: "removed", removed_at: new Date().toISOString() })
-          .eq("id", memberId),
+          .eq("id", memberId)
+          .select("id")
+          .maybeSingle(),
       "Couldn't remove this member. Please try again."
     )
   }
 
   async function ownerMarkPaid(paymentRequestId: string): Promise<boolean> {
     return runMutation(
-      () => supabase.from("payment_requests").update({ status: "paid" }).eq("id", paymentRequestId),
+      () =>
+        supabase
+          .from("payment_requests")
+          .update({ status: "paid" })
+          .eq("id", paymentRequestId)
+          .select("id")
+          .maybeSingle(),
       "Couldn't mark this payment as received. Please try again."
     )
   }
@@ -216,7 +244,9 @@ export function useSharedSubscription(
         supabase
           .from("payment_requests")
           .update({ status: "paid_pending_confirmation", member_marked_paid_at: new Date().toISOString() })
-          .eq("id", paymentRequestId),
+          .eq("id", paymentRequestId)
+          .select("id")
+          .maybeSingle(),
       "Couldn't report this payment. Please try again."
     )
   }

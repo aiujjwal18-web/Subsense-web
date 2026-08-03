@@ -9,6 +9,7 @@ import { RenewalUrgencyBadge } from "@/components/subscriptions/RenewalUrgencyBa
 import { Button } from "@/components/ui/button"
 import { AiDecisionCard } from "@/features/ai-insights/AiDecisionCard"
 import { useWorkspaceAiInsights } from "@/features/ai-insights/useWorkspaceAiInsights"
+import { useAuth } from "@/features/auth/AuthContext"
 import { staggerItemMotion } from "@/lib/motion"
 import { supabase } from "@/lib/supabase"
 import {
@@ -75,20 +76,31 @@ function SubscriptionListItem({
 
 export function DecisionWorkspacePage() {
   const navigate = useNavigate()
+  const { appUser } = useAuth()
   const [rows, setRows] = useState<SubscriptionRow[]>([])
   const [state, setState] = useState<LoadState>("loading")
 
   // Called unconditionally (before the loading/error early returns below) — hooks
   // can't be called after a conditional return. Runs fine against the initial empty
   // `rows` and re-derives its top-3-urgent selection once the fetch below populates it.
+  // `rows` is always caller-owned (see the explicit .eq("user_id", ...) filter below), so
+  // useWorkspaceAiInsights never has to worry about a shared (non-owned) subscription id.
   const workspaceInsights = useWorkspaceAiInsights(rows)
 
   useEffect(() => {
+    // Same rationale as SubscriptionsListPage.tsx: appUser can briefly be null even after
+    // this page mounts, so wait for it. Re-runs once it resolves.
+    if (!appUser) return
     let cancelled = false
 
     supabase
       .from("subscriptions")
       .select(SUBSCRIPTION_SELECT_COLUMNS)
+      // Explicit .eq("user_id", ...) — subscriptions_select_shared_member (file 34) is a
+      // second, additive RLS policy, so RLS alone no longer means "this is mine": without
+      // this filter, a subscription the caller merely shares in (not owns) would be pulled
+      // into their own AI decision review, financial totals, and Upcoming Renewals.
+      .eq("user_id", appUser.id)
       .neq("lifecycle_status", "archived")
       .then(({ data, error }) => {
         if (cancelled) return
@@ -103,7 +115,7 @@ export function DecisionWorkspacePage() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [appUser])
 
   if (state === "loading") {
     return (

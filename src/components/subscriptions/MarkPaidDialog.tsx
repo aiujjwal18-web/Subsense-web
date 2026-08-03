@@ -65,13 +65,18 @@ export function MarkPaidDialog({
 
   async function handleConfirm() {
     setSaving(true)
-    const { error } = await supabase
+    // .select().maybeSingle(), not a bare .update() — RLS silently matches zero rows on a
+    // blocked write rather than throwing, so {error} alone can't tell a real success from
+    // one that never touched the row (see BUILD_LOG's Phase 8 write-verification pass).
+    const { data, error } = await supabase
       .from("subscriptions")
       .update({ next_renewal_date: newNextRenewalDate })
       .eq("id", id)
+      .select("id")
+      .maybeSingle()
     setSaving(false)
 
-    if (error) {
+    if (error || !data) {
       toast.error("Couldn't update the renewal date. Please try again.")
       return
     }

@@ -115,13 +115,18 @@ export function SubscriptionCard({
   async function handleTogglePause() {
     const nextStatus = lifecycleStatus === "paused" ? "active" : "paused"
     setMutating(true)
-    const { error } = await supabase
+    // .select().maybeSingle(), not a bare .update() — RLS silently matches zero rows on a
+    // blocked write rather than throwing, so {error} alone can't tell a real success from
+    // one that never touched the row (see BUILD_LOG's Phase 8 write-verification pass).
+    const { data, error } = await supabase
       .from("subscriptions")
       .update({ lifecycle_status: nextStatus })
       .eq("id", id)
+      .select("id")
+      .maybeSingle()
     setMutating(false)
 
-    if (error) {
+    if (error || !data) {
       toast.error(
         nextStatus === "paused"
           ? "Couldn't pause this subscription. Please try again."
