@@ -28,6 +28,78 @@ Two things keep this current automatically:
 
 ---
 
+## 2026-08-03 — Follow-up: audit every subscriptions read for the same RLS-additive gap
+
+**Prompt:**
+Follow-up to the last two fixes: `subscriptions_select_shared_member` (file 34) is a second, additive RLS policy, so every read query against `subscriptions` that doesn't filter by an explicit owner check now also returns subscriptions the caller is merely a member of — RLS alone can no longer be trusted to mean "this is mine." Grep every `.from("subscriptions")` call site in the repo (don't trust a supplied list as exhaustive, verify against actual code) and fix per: `SubscriptionsListPage.tsx` and `DecisionWorkspacePage.tsx` need an explicit `.eq("user_id", appUser.id)`; `useWorkspaceAiInsights.ts` needs confirmation its `ids` are always already owner-scoped (fix it too if any caller could pass an unowned id); `SubscriptionDetailsPage.tsx`'s own single-subscription fetch needs an actual redirect-away guard once `isOwner` is known false, not just the hidden controls from the last pass, since the page itself was designed owner-only. Explicit instruction not to touch `useSharedSubscription.ts`/`useSharedSubscriptionsList.ts` — those intentionally include member access by design.
+
+**What was done:**
+- Grepped every `.from("subscriptions")` call site in `src/` (9 occurrences across 8 files — confirmed exhaustive, no other file references the table). Of these: 3 were UPDATE/INSERT sites already fixed in the prior pass (unaffected by this read-scoping issue); 2 are the two files explicitly excluded by name; the remaining 4 are covered below.
+- `SubscriptionsListPage.tsx` — added `useAuth()`, `.eq("user_id", appUser.id)` on the "My Subscriptions" query. `load()` now takes the resolved `userId` as a parameter rather than reading a possibly-stale closure value; the effect waits for `appUser` (guards a rare users-row-provisioning race where `ProtectedRoute`'s `loading` can go false before `appUser` resolves) and re-runs once it's available.
+- `DecisionWorkspacePage.tsx` — same treatment: `useAuth()`, `.eq("user_id", appUser.id)` on the subscriptions fetch, effect waits for `appUser`. Closes a real gap beyond the list page: without this, a subscription the caller merely shares in would have been pulled into their own AI Insights batch, financial totals, and Upcoming Renewals.
+- `useWorkspaceAiInsights.ts` — **no code change**. Confirmed via grep that `DecisionWorkspacePage.tsx` is its only real caller (`ai-insight-utils.ts`'s match was an unrelated import, not an invocation) — since that page's `rows` is now `user_id`-filtered, every `id` this hook ever receives is already caller-owned. Flagged rather than assumed.
+- `SubscriptionDetailsPage.tsx` — added an actual redirect: `if (!isOwner) return <Navigate to="/shared" replace />`, placed right after `isOwner` is computed (matches `ProtectedRoute.tsx`'s own declarative `<Navigate>` pattern, no imperative `navigate()`-in-an-effect needed). The previous pass's `isOwner`-gated Edit/Archive controls are left in place as harmless defense in depth, now redundant in practice since a non-owner never reaches that render path at all. `useAiInsight.ts` needed no separate change, per the user's own reasoning: it's only ever called from this page, so it stops being reachable by a non-owner once the redirect lands — its very first mount (before `row`/`isOwner` resolve) still fires one read-only fetch, an unavoidable consequence of hooks being called unconditionally before any early return, and not something asked to be closed further.
+- Backend cross-check (not a code change, just verification): confirmed `ai-generate-insight/index.ts`'s two `subscriptions` reads are already correctly owner-scoped — workspace mode via `.eq("user_id", userId)`, single mode via a post-fetch `sub.user_id !== userId` → `AI_002` check — so this same class of gap doesn't exist there.
+
+**Verification:**
+- `npx tsc -b`, `npx eslint src/`, `npm run build` — all clean, same 4-error baseline.
+- `useSharedSubscription.ts`/`useSharedSubscriptionsList.ts` confirmed untouched (diff-checked) — member access there is correct by design, not this bug.
+- **Not verified from this sandbox**: the actual live fix — needs a real session as both an owner and a member who shares a subscription with them.
+
+**Commit:** `b5af8fd` — "Fix three RLS-additive-policy gaps from file 34 (subscriptions_select_shared_member)" (landed together with the other two entries below in this one commit — see that commit's message for the full itemized breakdown across all three fix rounds)
+
+---
+
+## 2026-08-03 — Two bugs from file 34 making SubscriptionDetailsPage reachable by members
+
+**Prompt:**
+Two bugs found live-testing Phase 8, both stemming from `subscriptions_select_shared_member` (file 34) making `SubscriptionDetailsPage.tsx` reachable by a non-owner linked member for the first time — previously owner-only by RLS, so it never needed to guard its own controls. Bug 1: the Edit tab and Archive button are visible (and usable) to a non-owner viewer — gate both behind an ownership check, same pattern as `SharedSubscriptionsPage.tsx`'s `item.isOwner`. Bug 2: when the member's archive attempt was correctly rejected by RLS, the UI still showed an "Archived" success toast — Postgres RLS silently matches zero rows on a blocked UPDATE rather than throwing, so checking only `{error}` can't tell a blocked write from a real success. Asked to audit every mutation in the codebase for this same "check error, assume success" blind spot, not just the one button that got caught, and report everywhere found.
+
+**What was done:**
+- `src/features/subscriptions/subscription-utils.ts` — added `user_id` to `SUBSCRIPTION_SELECT_COLUMNS`/`SubscriptionRow` (wasn't previously selected — `SubscriptionDetailsPage` had no way to know the owner's id at all).
+- `SubscriptionDetailsPage.tsx` — added `isOwner = row.user_id === appUser.id` (via `useAuth()`); gated the header Edit button and the entire Archive button/dialog behind it. A non-owner viewer now sees the read-only view plus whatever "Manage sharing" already correctly permits (that section was already gating correctly via `sharedSub.isOwner`/`SharedMemberRow`/`PaymentRequestItem` — no change needed there).
+- **Full audit of the "check error, assume success" pattern** — every `.update()`/`.insert()`/`.upsert()`/`.delete()` call site in the codebase (`grep`-verified, 6 files, exhaustive): found and fixed 8 vulnerable sites, all missing a `.select()` + affected-rows check:
+  - `SubscriptionDetailsPage.tsx` `handleArchive` (the one that got caught)
+  - `SubscriptionCard.tsx` `handleTogglePause`
+  - `MarkPaidDialog.tsx` `handleConfirm`
+  - `useSharedSubscription.ts`'s `runMutation` helper (covers `editMember`, `removeMember`, `ownerMarkPaid`, `reportPaid`) — redesigned to accept `{error, data}` and treat empty/null `data` as failure, same as a real error; `createShare`/`addMember` also given `.select("id").single()` even though INSERT's `WITH CHECK` already throws a real error on block (not vulnerable to this specific blind spot) — for consistency, so `runMutation`'s new uniform contract doesn't have some callers opted in and others silently not
+  - `useSharedSubscriptionsList.ts` — identical `runMutation` redesign, covers `ownerMarkPaid`/`reportPaid`
+  - `handleSaveEdit` (`SubscriptionDetailsPage.tsx`) and `AddSubscriptionPage.tsx`'s insert were already safe (already used `.select()` + checked `!data`) — confirmed, not modified.
+  - `sendReminder` (both hooks) is an Edge Function invoke, not a raw table write — already signals failure explicitly via `data.success`, not subject to this blind spot.
+
+**Flagged, not fixed (out of the two named bugs' scope):**
+- `SubscriptionDetailsPage.tsx` passes `isSelf={false}` (hardcoded) to `PaymentRequestItem` — written when this page was assumed owner-only; now stale, since a linked member can reach it. Not fixed here: RLS already scopes `paymentRequests` to just the member's own row for a non-owner viewer (no data leak), and `SharedSubscriptionsPage.tsx` already gives them a working "I've Paid" path — leaving this conservatively read-only on this page isn't broken, just more limited than it could be. Worth a follow-up if members should be able to self-report from here too.
+- A non-owner's `useAiInsight` call on this page will hit `ai-generate-insight`'s own `AI_002` ownership check and show "unavailable" — fails safely and loudly (no data leak, no silent success), just a cosmetic rough edge (a permanently-failing "Try again" button). Not fixed — different in kind from the two named bugs, no security/data-integrity concern.
+
+**Verification:**
+- `npx tsc -b`, `npx eslint src/`, `npm run build` — all clean, same 4-error baseline.
+- Confirmed via `grep` that the 6 files touched are the complete set of files in `src/` containing any `.update()/.insert()/.upsert()/.delete()` call — nothing missed.
+- **Not verified from this sandbox**: the actual live fix, since it needs a real session as both the owner and the affected member.
+
+**Commit:** `b5af8fd` — "Fix three RLS-additive-policy gaps from file 34 (subscriptions_select_shared_member)" (landed together with the other two entries below in this one commit — see that commit's message for the full itemized breakdown across all three fix rounds)
+
+---
+
+## 2026-08-03 — Fix: linked member's shared subscriptions silently disappearing
+
+**Prompt:**
+A linked shared member (confirmed real account, `shared_members.user_id` correctly points to her `users` row, `status = 'active'`, single non-duplicated `auth.users` row) still saw "Nothing shared yet" on `SharedSubscriptionsPage`. Asked to check Supabase's logs for the actual REST request / reproduce with her account to see what `auth.uid()`/`current_app_user_id()` resolve to, and report findings before proposing a fix.
+
+No live log/browser access was available from this sandbox to do that literally. Instead did a full static trace of every function/policy in the chain — `current_app_user_id()`, `is_shared_subscription_member()`, `shared_subscriptions_select_owner_or_member` — all read directly from the deployed-schema source and confirmed structurally correct; given her confirmed data, that RLS check should already return `true` for her session. Reported this, plus a different, better-supported hypothesis found by re-examining the actual query instead: `useSharedSubscriptionsList.ts` embeds `subscriptions(...)` inside the same `shared_subscriptions` select, and `subscriptions_select_own` (confirmed via direct read) grants `SELECT` to the owner only, no member exception. Since `shared_subscriptions.subscription_id` is `NOT NULL`, PostgREST's default embed for that relationship is inner-join-like — an invisible embedded row silently drops the whole parent row, exactly matching `state === "ready"` + zero items with no error. Presented via `AskUserQuestion` alongside a second, related fork this surfaced (a linked member also has zero RLS visibility into the subscription's own name at all — leave it as "Untitled subscription," or close it properly with a scoped grant). User approved proceeding on the static-analysis hypothesis and chose to add the scoped grant rather than defer it.
+
+**What was done:**
+- `34_SubSense_Shared_Member_Subscription_Visibility_v1.0.sql` (new, external docs folder) — one additive RLS policy, `subscriptions_select_shared_member`, granting `SELECT` on `subscriptions` when the caller is an active linked member of a `shared_subscriptions` row referencing it. Postgres OR's multiple permissive policies for the same command, so this doesn't touch the existing `subscriptions_select_own` at all. Flagged explicitly in the migration's own comments (not silently scoped): this is a full-row grant, matching every other RLS policy in this schema (no column-level security exists anywhere in this codebase) — a member also gains visibility into `cost`/`payment_method`/`payment_reference_note`, not just the display name, confirmed acceptable rather than assumed.
+- `src/features/shared-subscriptions/useSharedSubscriptionsList.ts` — embed changed from `subscriptions(...)` to `subscriptions!left(...)` (PostgREST embed-hint syntax, first use of it anywhere in this codebase). Defense in depth on top of the new grant: the parent `shared_subscriptions` row can no longer silently vanish if the embedded row is ever invisible for any future reason — falls back to `subscriptions: null`, already handled gracefully by `getDisplayName()`'s existing null-safety.
+
+**Verification:**
+- `npx tsc -b`, `npx eslint src/`, `npm run build` — clean, same baseline as every prior pass (one-line query change, no new types).
+- Write-scope check on the new migration: exactly one `CREATE POLICY` (behind a `DROP POLICY IF EXISTS` for idempotency), no other policy, table, or DML statement touched.
+- **Not verified from this sandbox**: the actual live fix — needs the migration run against Supabase and a real session as the affected member.
+
+**Commit:** `b5af8fd` — "Fix three RLS-additive-policy gaps from file 34 (subscriptions_select_shared_member)" (landed together with the other two entries below in this one commit — see that commit's message for the full itemized breakdown across all three fix rounds)
+
+---
+
 ## 2026-08-03 — Three live-testing fixes to Phase 8 (Shared Subscriptions)
 
 **Prompt:**
@@ -1421,3 +1493,7 @@ Implement Phase 2 (Authentication and Profile) for SubSense per 16_Implementatio
 **Commit logged:** `c4b898d` — "Add BUILD_LOG.md entry for Phase 8: Shared Subscriptions" (2026-08-03 18:05) — 1 file changed, 44 insertions(+), 1 deletion(-)
 
 **Commit logged:** `6396c69` — "Add icon tooltips to shared-subscription actions" (2026-08-03 19:13) — 3 files changed, 97 insertions(+), 12 deletions(-)
+
+**Commit logged:** `498dbd4` — "Add BUILD_LOG.md entry for shared-subscription tooltip fixes" (2026-08-03 19:13) — 1 file changed, 24 insertions(+)
+
+**Commit logged:** `b5af8fd` — "Fix three RLS-additive-policy gaps from file 34 (subscriptions_select_shared_member)" (2026-08-03 21:44) — 8 files changed, 158 insertions(+), 46 deletions(-)
