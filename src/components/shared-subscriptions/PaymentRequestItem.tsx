@@ -3,6 +3,7 @@ import { Bell, CheckCircle2 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { ConfirmDialog } from "@/components/shared-subscriptions/ConfirmDialog"
 import { formatMoney, type Currency } from "@/features/subscriptions/subscription-utils"
 import {
@@ -65,14 +66,40 @@ export function PaymentRequestItem({
       {isOwner && (canOwnerMarkPaid(request.status) || canSendReminder(request.status)) && (
         <div className="flex items-center gap-1">
           {canSendReminder(request.status) && (
-            <Button type="button" variant="ghost" size="icon-sm" onClick={() => setReminderOpen(true)} aria-label={`Send reminder to ${memberName}`}>
-              <Bell className="size-3.5" />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => setReminderOpen(true)}
+                    aria-label={`Send reminder to ${memberName}`}
+                  />
+                }
+              >
+                <Bell className="size-3.5" />
+              </TooltipTrigger>
+              <TooltipContent>Send reminder</TooltipContent>
+            </Tooltip>
           )}
           {canOwnerMarkPaid(request.status) && (
-            <Button type="button" variant="ghost" size="icon-sm" onClick={() => setMarkPaidOpen(true)} aria-label={`Mark ${memberName}'s payment received`}>
-              <CheckCircle2 className="size-3.5" />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => setMarkPaidOpen(true)}
+                    aria-label={`Mark ${memberName}'s payment received`}
+                  />
+                }
+              >
+                <CheckCircle2 className="size-3.5" />
+              </TooltipTrigger>
+              <TooltipContent>Mark {memberName}'s payment received</TooltipContent>
+            </Tooltip>
           )}
         </div>
       )}

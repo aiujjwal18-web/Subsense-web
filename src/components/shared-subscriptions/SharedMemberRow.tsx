@@ -2,6 +2,7 @@ import { Pencil, X } from "lucide-react"
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { formatMoney } from "@/features/subscriptions/subscription-utils"
 import { getMemberDisplayName, type SharedMemberRow as SharedMemberRowData, type SplitMethod } from "@/features/shared-subscriptions/shared-subscription-utils"
 
@@ -43,12 +44,24 @@ export function SharedMemberRow({ member, splitMethod, isOwner, onEdit, onRemove
       </div>
       {isOwner && (
         <div className="flex items-center gap-1">
-          <Button type="button" variant="ghost" size="icon-sm" onClick={onEdit} aria-label={`Edit ${name}`}>
-            <Pencil className="size-3.5" />
-          </Button>
-          <Button type="button" variant="ghost" size="icon-sm" onClick={onRemove} aria-label={`Remove ${name} from split`}>
-            <X className="size-3.5" />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger
+              render={<Button type="button" variant="ghost" size="icon-sm" onClick={onEdit} aria-label={`Edit ${name}`} />}
+            >
+              <Pencil className="size-3.5" />
+            </TooltipTrigger>
+            <TooltipContent>Edit {name}</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button type="button" variant="ghost" size="icon-sm" onClick={onRemove} aria-label={`Remove ${name} from split`} />
+              }
+            >
+              <X className="size-3.5" />
+            </TooltipTrigger>
+            <TooltipContent>Remove from split</TooltipContent>
+          </Tooltip>
         </div>
       )}
     </div>
