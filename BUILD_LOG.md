@@ -1587,3 +1587,5 @@ Implement Phase 2 (Authentication and Profile) for SubSense per 16_Implementatio
 **Commit logged:** `fa6e5ed` — "Add BUILD_LOG.md entry for diagnostic-logging revert" (2026-08-04 21:44) — 1 file changed, 21 insertions(+)
 
 **Commit logged:** `abca540` — "Add subscription owner's name to shared_payment reminder emails" (2026-08-04 22:34) — 1 file changed, 46 insertions(+), 17 deletions(-)
+
+**Commit logged:** `c1221dc` — "Add BUILD_LOG.md entry for shared_payment owed_to context fix" (2026-08-04 22:34) — 1 file changed, 26 insertions(+)
