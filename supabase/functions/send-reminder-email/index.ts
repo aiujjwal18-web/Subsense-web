@@ -41,6 +41,7 @@ interface PaymentRequestContextRow {
   amount: number
   currency: string
   shared_subscriptions: {
+    owner_user_id: string | null
     subscriptions: {
       custom_name: string | null
       subscription_catalog: { name: string } | null
@@ -150,11 +151,49 @@ Deno.serve(async (req) => {
     .eq("is_active", true)
   const templateByCode = new Map((templates ?? []).map((t) => [t.template_code as string, t]))
 
-  const userIds = [...new Set(claimed.map((r) => r.user_id).filter((id): id is string => Boolean(id)))]
+  const paymentRequestIds = [
+    ...new Set(claimed.map((r) => r.payment_request_id).filter((id): id is string => Boolean(id))),
+  ]
+  const { data: paymentRequests } = paymentRequestIds.length
+    ? await supabaseAdmin
+        .from("payment_requests")
+        .select(
+          "id, amount, currency, shared_subscriptions(owner_user_id, subscriptions(custom_name, subscription_catalog(name))), shared_members(email, display_name)"
+        )
+        .in("id", paymentRequestIds)
+    : { data: [] as PaymentRequestContextRow[] }
+  const paymentRequestById = new Map(
+    ((paymentRequests ?? []) as PaymentRequestContextRow[]).map((p) => [p.id, p])
+  )
+
+  // owner_user_id feeds the {{owed_to}} context (see buildContext below) — merged into the
+  // same users fetch as recipient ids below rather than a second round-trip.
+  const ownerUserIds = [
+    ...new Set(
+      ((paymentRequests ?? []) as PaymentRequestContextRow[])
+        .map((p) => p.shared_subscriptions?.owner_user_id)
+        .filter((id): id is string => Boolean(id))
+    ),
+  ]
+
+  const userIds = [
+    ...new Set([
+      ...claimed.map((r) => r.user_id).filter((id): id is string => Boolean(id)),
+      ...ownerUserIds,
+    ]),
+  ]
   const { data: users } = userIds.length
     ? await supabaseAdmin.from("users").select("id, email").in("id", userIds)
     : { data: [] as { id: string; email: string }[] }
   const userById = new Map((users ?? []).map((u) => [u.id as string, u]))
+
+  // display_name is populated for every user at signup (handle_new_user(), independent of
+  // the still-unbuilt Profile page) — preferred over users.email for {{owed_to}}, which falls
+  // back to email only if display_name is somehow null.
+  const { data: ownerProfiles } = ownerUserIds.length
+    ? await supabaseAdmin.from("user_profiles").select("user_id, display_name").in("user_id", ownerUserIds)
+    : { data: [] as { user_id: string; display_name: string | null }[] }
+  const profileByUserId = new Map((ownerProfiles ?? []).map((p) => [p.user_id as string, p]))
 
   const subscriptionIds = [...new Set(claimed.map((r) => r.subscription_id).filter((id): id is string => Boolean(id)))]
   const { data: subscriptions } = subscriptionIds.length
@@ -165,21 +204,6 @@ Deno.serve(async (req) => {
     : { data: [] as SubscriptionContextRow[] }
   const subscriptionById = new Map(
     ((subscriptions ?? []) as SubscriptionContextRow[]).map((s) => [s.id, s])
-  )
-
-  const paymentRequestIds = [
-    ...new Set(claimed.map((r) => r.payment_request_id).filter((id): id is string => Boolean(id))),
-  ]
-  const { data: paymentRequests } = paymentRequestIds.length
-    ? await supabaseAdmin
-        .from("payment_requests")
-        .select(
-          "id, amount, currency, shared_subscriptions(subscriptions(custom_name, subscription_catalog(name))), shared_members(email, display_name)"
-        )
-        .in("id", paymentRequestIds)
-    : { data: [] as PaymentRequestContextRow[] }
-  const paymentRequestById = new Map(
-    ((paymentRequests ?? []) as PaymentRequestContextRow[]).map((p) => [p.id, p])
   )
 
   // monthly_digest/lapsed_reengagement are user-level (no subscription_id) — aggregate
@@ -233,7 +257,12 @@ Deno.serve(async (req) => {
         pr.shared_subscriptions?.subscriptions?.subscription_catalog?.name ??
         pr.shared_subscriptions?.subscriptions?.custom_name ??
         "Untitled subscription"
-      return { subscription_name: subName, amount: pr.amount, currency: pr.currency }
+      const ownerId = pr.shared_subscriptions?.owner_user_id
+      const owedTo =
+        (ownerId ? profileByUserId.get(ownerId)?.display_name : null) ??
+        (ownerId ? userById.get(ownerId)?.email : null) ??
+        "the subscription owner"
+      return { subscription_name: subName, amount: pr.amount, currency: pr.currency, owed_to: owedTo }
     }
 
     if (reminder.subscription_id) {
