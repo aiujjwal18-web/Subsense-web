@@ -67,6 +67,19 @@ export function requireServiceRole(req: Request): Response | null {
   const token = authHeader.replace(/^Bearer\s+/i, "").trim()
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
 
+  // TEMPORARY diagnostic — root-causing a 401 that survives the JWT-gateway fix, where
+  // safeCompare() itself is rejecting a token the user has visually confirmed matches.
+  // Logs only lengths/prefixes via console.log (Edge Function Logs tab only, never the
+  // HTTP response) — never the full token or key. Revert once the mismatch is understood.
+  console.log("requireServiceRole diagnostic", {
+    hasAuthHeader: req.headers.get("Authorization") != null,
+    tokenLength: token.length,
+    serviceRoleKeyLength: serviceRoleKey.length,
+    tokenPrefix: token.slice(0, 10),
+    serviceRoleKeyPrefix: serviceRoleKey.slice(0, 10),
+    lengthsMatch: token.length === serviceRoleKey.length,
+  })
+
   if (!serviceRoleKey || !token || !safeCompare(token, serviceRoleKey)) {
     return errorResponse(401, "UNAUTHORIZED", "Service-role authorization required.")
   }
