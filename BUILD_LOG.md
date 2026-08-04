@@ -28,6 +28,23 @@ Two things keep this current automatically:
 
 ---
 
+## 2026-08-04 — Revert: remove requireServiceRole() diagnostic logging
+
+**Prompt:**
+Revert the temporary `requireServiceRole()` diagnostic logging added in `c77197a` — the 401 root cause is confirmed (malformed `Authorization` header with wrapping angle brackets, now fixed at the Cron config level, not a code issue). Remove the diagnostic `console.log` entirely, commit, and push.
+
+**What was done:**
+- `supabase/functions/_shared/http.ts` — removed the `console.log` diagnostic block added in `c77197a`, restoring `requireServiceRole()` to its pre-diagnostic state exactly (diff-confirmed: only those 13 lines removed, nothing else touched).
+- Root cause was a Cron-side configuration issue (the `Authorization` header value itself was malformed — wrapped in angle brackets), not application code — no other code change needed.
+
+**Verification:**
+- `git diff` confirmed the revert removes exactly the lines `c77197a` added, no drift.
+- Not re-run through `tsc -b`/`eslint src/`/`npm run build` — this file was already confirmed out of scope for all three (Deno runtime, not covered by `tsconfig.json` or the `eslint src/` invocation), and a pure deletion carries no new risk.
+
+**Commit:** `0f9a324` — "Revert temporary requireServiceRole() diagnostic logging"
+
+---
+
 ## 2026-08-04 — Temp diagnostic: requireServiceRole() 401 surviving the JWT-gateway fix
 
 **Prompt:**
@@ -1540,3 +1557,7 @@ Implement Phase 2 (Authentication and Profile) for SubSense per 16_Implementatio
 **Commit logged:** `695b5ac` — "Add BUILD_LOG.md entry for Phase 6 JWT gateway regression fix" (2026-08-04 21:09) — 1 file changed, 22 insertions(+)
 
 **Commit logged:** `c77197a` — "Add temp diagnostic logging to requireServiceRole() for 401 root-cause" (2026-08-04 21:30) — 1 file changed, 13 insertions(+)
+
+**Commit logged:** `8020f00` — "Add BUILD_LOG.md entry for requireServiceRole() diagnostic logging" (2026-08-04 21:30) — 1 file changed, 21 insertions(+)
+
+**Commit logged:** `0f9a324` — "Revert temporary requireServiceRole() diagnostic logging" (2026-08-04 21:44) — 1 file changed, 13 deletions(-)
