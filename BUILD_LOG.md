@@ -28,6 +28,28 @@ Two things keep this current automatically:
 
 ---
 
+## 2026-08-04 — Add subscription owner's name to shared_payment reminder emails ({{owed_to}})
+
+**Prompt:**
+`send-reminder-email`'s `buildContext()` for `reminder_type === "shared_payment"` only returns `{ subscription_name, amount, currency }` — a payment request email with no named sender is a real trust/spam-risk problem. Fix by including the subscription owner's name, sourced from `user_profiles.display_name` (populated at signup via `handle_new_user()`, independent of the still-unbuilt Profile page). Extend the `payment_requests` select to embed `shared_subscriptions(owner_user_id, subscriptions(...))` (confirm the exact column/FK first), batch-fetch `user_profiles.display_name` for the collected owner ids with a `users.email` fallback (same batching pattern as `userById`, no N+1), add an `owed_to` context field, and check the live `reminder_shared_payment` copy before drafting a `{{owed_to}}`-token SQL patch — show the current copy and proposed edit for a tone sanity check against DEC-047 before finalizing. Confirm `renderEmail()`'s substitution is already generic. Don't touch the IIT Capstone docs folder — flag doc-impact instead. Flagged whether a new DEC is needed (concluded no — copy/context content within DEC-047's existing pattern, not an architecture change).
+
+**What was done:**
+- Confirmed via direct schema read (`17_SubSense_Migration_v2.sql`): `shared_subscriptions.owner_user_id uuid not null references public.users(id)` (line 201), `user_profiles.user_id`/`display_name text` (nullable) (lines 92-94).
+- Confirmed the live `reminder_shared_payment` copy (`23_SubSense_Notification_Copy_Patch_v1.0.sql`, RUN AND VERIFIED LIVE) — presented it plus two candidate `{{owed_to}}` treatments (name in subject vs. name in body only) via `AskUserQuestion`; user picked subject-line placement, since it's visible in an inbox preview before the email is opened, actually addressing the trust/spam-risk problem rather than just documenting it inside an opened email.
+- `send-reminder-email/index.ts`: reordered the batch-fetch block so `payment_requests` is fetched before `users` (no real data dependency blocked this) — lets the owner's `user_id` merge into the same combined `users` query as recipient ids instead of a second round-trip. Extended the `payment_requests` embed to `shared_subscriptions(owner_user_id, subscriptions(...))` and `PaymentRequestContextRow`'s type accordingly. Added a new batched `user_profiles.select("user_id, display_name")` fetch scoped to the collected owner ids → `profileByUserId` map. `buildContext()`'s `shared_payment` branch now resolves `owed_to` via `profileByUserId.get(ownerId)?.display_name ?? userById.get(ownerId)?.email ?? "the subscription owner"` and includes it in the returned context.
+- Confirmed `renderEmail()`/`interpolate()` (`_shared/email-template.ts`) needs no change — its `\{\{(\w+)\}\}` substitution is already generic against whatever keys exist on the `TemplateContext` object (`Record<string, string | number>`, not a fixed interface).
+- New external SQL patch, `35_SubSense_Shared_Payment_Owed_To_Patch_v1.0.sql` (same style as file 23) — updates only the `reminder_shared_payment` row's subject/body to add `{{owed_to}}`, subject-line placement.
+- Flagged, not edited: doc 10 v1.17 already documents email-context fallback chains at this granularity (e.g. `reminders.user_id` → `shared_members.email`) — the new `display_name` → `email` → generic-string fallback for `owed_to` is the same kind of detail that section covers, worth a doc 10 note once confirmed live.
+
+**Verification:**
+- `npx tsc -b`, `npx eslint src/`, `npm run build` — all clean, same 4-error baseline. `send-reminder-email/index.ts` confirmed (again) out of scope for both `tsc -b` and `eslint src/` — sanity check for drift, not a real gate on this file.
+- Read back the full reordered fetch block end-to-end: confirmed `subscriptionById`, `userTotals`/digest logic, and `resolveRecipientEmail()` (still keyed only on `reminder.user_id`, unaffected by `userById` now also containing owner entries) are all intact.
+- **Not verifiable from this sandbox**: needs the SQL patch run live and a real shared-payment reminder send to confirm the rendered email shows the owner's actual name, not a literal `{{owed_to}}` or the fallback string.
+
+**Commit:** `abca540` — "Add subscription owner's name to shared_payment reminder emails"
+
+---
+
 ## 2026-08-04 — Revert: remove requireServiceRole() diagnostic logging
 
 **Prompt:**
@@ -1561,3 +1583,7 @@ Implement Phase 2 (Authentication and Profile) for SubSense per 16_Implementatio
 **Commit logged:** `8020f00` — "Add BUILD_LOG.md entry for requireServiceRole() diagnostic logging" (2026-08-04 21:30) — 1 file changed, 21 insertions(+)
 
 **Commit logged:** `0f9a324` — "Revert temporary requireServiceRole() diagnostic logging" (2026-08-04 21:44) — 1 file changed, 13 deletions(-)
+
+**Commit logged:** `fa6e5ed` — "Add BUILD_LOG.md entry for diagnostic-logging revert" (2026-08-04 21:44) — 1 file changed, 21 insertions(+)
+
+**Commit logged:** `abca540` — "Add subscription owner's name to shared_payment reminder emails" (2026-08-04 22:34) — 1 file changed, 46 insertions(+), 17 deletions(-)
