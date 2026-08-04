@@ -28,6 +28,23 @@ Two things keep this current automatically:
 
 ---
 
+## 2026-08-04 — Temp diagnostic: requireServiceRole() 401 surviving the JWT-gateway fix
+
+**Prompt:**
+After the JWT-gateway fix (`supabase/config.toml`), `send-reminder-email`'s `requireServiceRole()` now runs, but still rejects the Cron job's request with 401 — `safeCompare(token, serviceRoleKey)` is failing even though the user visually confirmed the Cron header matches the current `sb_secret_...` key in Project Settings → API, and confirmed `SUPABASE_SERVICE_ROLE_KEY` was never manually set as an Edge Function secret (so it should rely on Supabase's automatic injection). Add a temporary, non-secret-revealing diagnostic to `requireServiceRole()`, mirroring the exact pattern already used once before in this project (`d8adf1a`/`c4d5b6f` — temp debug logging in `useAiInsight`, added then reverted) to root-cause a near-identical issue. Log only: whether `Authorization` was present, `token.length`/`serviceRoleKey.length`, first-10-char prefix of each, and whether the lengths match — via `console.log` only (Edge Function Logs tab, never the HTTP response), never the full token or key. Deploy, then have the user manually re-trigger `send-reminder-email-hourly` and report back the diagnostic output (lengths/prefixes/match, not real values). Revert the logging in a follow-up commit once the mismatch is understood — never let temporary diagnostics linger.
+
+**What was done:**
+- `supabase/functions/_shared/http.ts` — added a `console.log` diagnostic inside `requireServiceRole()`, right before the existing `safeCompare` check. Logs `hasAuthHeader` (boolean), `tokenLength`/`serviceRoleKeyLength`, `tokenPrefix`/`serviceRoleKeyPrefix` (first 10 chars only), and `lengthsMatch` (boolean) — no full token/key value logged anywhere. Applies to both `send-reminder-email` and `generate-scheduled-reminders` (both call this shared function), which is expected and fine — the same root cause would affect both.
+- Confirmed via the workflow's own `paths: ["supabase/functions/**"]` trigger (`.github/workflows/deploy-edge-functions.yml:13-14`) that this change — unlike the prior `supabase/config.toml`-only push, which lives outside `supabase/functions/` — sits inside the filtered path and will auto-deploy on push. No manual `workflow_dispatch` needed this round.
+
+**Verification:**
+- Confirmed the two IDE diagnostics this edit surfaced (`Cannot find module 'jsr:@std/crypto/timing-safe-equal'`, `Cannot find name 'Deno'`) are pre-existing to this file, not introduced by this change: `tsconfig.json` only references `tsconfig.app.json`/`tsconfig.node.json` (app `src/` only) and `eslint.config.js` is invoked as `eslint src/` — neither ever covers `supabase/functions/`, which runs on Deno, a different runtime than the editor's Node-based TS server understands.
+- **Not verified from this sandbox**: the actual diagnostic output, since it needs a live Cron re-trigger and the Supabase Edge Function Logs tab. User to report back lengths/prefixes/match after re-running `send-reminder-email-hourly`.
+
+**Commit:** `c77197a` — "Add temp diagnostic logging to requireServiceRole() for 401 root-cause"
+
+---
+
 ## 2026-08-04 — Phase 6 regression: Cron Edge Functions rejected by platform JWT gateway
 
 **Prompt:**
@@ -1519,3 +1536,7 @@ Implement Phase 2 (Authentication and Profile) for SubSense per 16_Implementatio
 **Commit logged:** `8f31327` — "Add BUILD_LOG.md entries for file-34 RLS-additive-policy fix rounds" (2026-08-03 21:45) — 1 file changed, 76 insertions(+)
 
 **Commit logged:** `19e8ebf` — "Fix Phase 6 regression: Cron Edge Functions rejected by platform JWT gateway" (2026-08-04 21:08) — 1 file changed, 7 insertions(+)
+
+**Commit logged:** `695b5ac` — "Add BUILD_LOG.md entry for Phase 6 JWT gateway regression fix" (2026-08-04 21:09) — 1 file changed, 22 insertions(+)
+
+**Commit logged:** `c77197a` — "Add temp diagnostic logging to requireServiceRole() for 401 root-cause" (2026-08-04 21:30) — 1 file changed, 13 insertions(+)
