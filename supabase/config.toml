@@ -1,0 +1,7 @@
+project_id = "kamxnvaqkeebsgwssrrr"
+
+[functions.send-reminder-email]
+verify_jwt = false
+
+[functions.generate-scheduled-reminders]
+verify_jwt = false
