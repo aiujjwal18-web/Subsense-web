@@ -28,6 +28,24 @@ Two things keep this current automatically:
 
 ---
 
+## 2026-08-04 — Phase 6 regression: Cron Edge Functions rejected by platform JWT gateway
+
+**Prompt:**
+`send-reminder-email` and `generate-scheduled-reminders` are Cron-only Edge Functions that authenticate via `requireServiceRole()` (an exact match against `SUPABASE_SERVICE_ROLE_KEY`), never meant to receive a real user JWT. `.github/workflows/deploy-edge-functions.yml` runs `supabase functions deploy` with no `--no-verify-jwt` flag and no `supabase/config.toml` exists in the repo, so every redeploy re-enables Supabase's platform-level JWT gateway on all functions by default. Since the Cron jobs send the service-role key (not a JWT) in `Authorization`, the platform rejects every hourly/daily invocation before the function's own code runs — confirmed live via `net._http_response` showing `401 UNAUTHORIZED_INVALID_JWT_FORMAT` on every hourly tick since at least 2026-08-04. A real regression affecting all reminder delivery (Phase 6), not a Phase 8 change. Fix: add `supabase/config.toml` with `verify_jwt = false` for the two service-role-only functions, explicitly not for `ai-generate-insight`/`send-shared-payment-reminder` (both use `requireAuthenticatedUser`, a real browser-session JWT). Confirm via grep, don't take it on say-so. Since the workflow's trigger is `paths: ["supabase/functions/**"]`, a `config.toml`-only change won't auto-deploy — needs a manual `workflow_dispatch` run after pushing. No backfill/manual resend after redeploy — stuck-pending reminders self-heal on the next successful tick per DEC-068's existing catch-up model (`scheduled_for <= now()`).
+
+**What was done:**
+- Confirmed via `Grep` across `supabase/functions/`: `send-reminder-email/index.ts:84` and `generate-scheduled-reminders/index.ts:23` call `requireServiceRole`; `ai-generate-insight/index.ts:168` and `send-shared-payment-reminder/index.ts:22` call `requireAuthenticatedUser` — matches the fix's scoping exactly.
+- Confirmed via `Glob` that no `supabase/config.toml` existed anywhere in the repo before this change.
+- Added `supabase/config.toml`: `project_id = "kamxnvaqkeebsgwssrrr"`, `verify_jwt = false` for `send-reminder-email` and `generate-scheduled-reminders` only.
+
+**Verification:**
+- `npx tsc -b`, `npx eslint src/`, `npm run build` — all clean, same 4-error baseline (unaffected, as expected — no `src/` changes).
+- **Not verified from this sandbox**: the actual redeploy and the post-tick `net._http_response` check — both need live GitHub Actions / Supabase access this sandbox doesn't have. User to manually trigger the workflow (`workflow_dispatch`) after push and confirm the next hourly tick returns `200`, not `401`.
+
+**Commit:** `19e8ebf` — "Fix Phase 6 regression: Cron Edge Functions rejected by platform JWT gateway"
+
+---
+
 ## 2026-08-03 — Follow-up: audit every subscriptions read for the same RLS-additive gap
 
 **Prompt:**
@@ -1497,3 +1515,7 @@ Implement Phase 2 (Authentication and Profile) for SubSense per 16_Implementatio
 **Commit logged:** `498dbd4` — "Add BUILD_LOG.md entry for shared-subscription tooltip fixes" (2026-08-03 19:13) — 1 file changed, 24 insertions(+)
 
 **Commit logged:** `b5af8fd` — "Fix three RLS-additive-policy gaps from file 34 (subscriptions_select_shared_member)" (2026-08-03 21:44) — 8 files changed, 158 insertions(+), 46 deletions(-)
+
+**Commit logged:** `8f31327` — "Add BUILD_LOG.md entries for file-34 RLS-additive-policy fix rounds" (2026-08-03 21:45) — 1 file changed, 76 insertions(+)
+
+**Commit logged:** `19e8ebf` — "Fix Phase 6 regression: Cron Edge Functions rejected by platform JWT gateway" (2026-08-04 21:08) — 1 file changed, 7 insertions(+)
