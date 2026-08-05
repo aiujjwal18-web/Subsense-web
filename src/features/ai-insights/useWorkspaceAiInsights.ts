@@ -3,7 +3,13 @@ import { toast } from "sonner"
 
 import { supabase } from "@/lib/supabase"
 import { computeRenewalUrgency, daysUntil, type SubscriptionRow } from "@/features/subscriptions/subscription-utils"
-import { shouldRegenerateInsight, TOP_URGENT_LIMIT, type CachedInsightRow, type FinancialImpact } from "./ai-insight-utils"
+import {
+  FREE_TIER_WORKSPACE_LIMIT,
+  shouldRegenerateInsight,
+  TOP_URGENT_LIMIT,
+  type CachedInsightRow,
+  type FinancialImpact,
+} from "./ai-insight-utils"
 import type { AiInsight, AiInsightState } from "./useAiInsight"
 
 export interface WorkspaceInsightEntry {
@@ -13,6 +19,9 @@ export interface WorkspaceInsightEntry {
 
 export interface UseWorkspaceAiInsightsResult {
   candidates: SubscriptionRow[]
+  // Count before the free-tier cap is applied — lets the caller distinguish "nothing
+  // else was urgent" from "more existed but got capped" for an explanatory note.
+  allCandidateCount: number
   entries: Map<string, WorkspaceInsightEntry>
   regenerate: () => void
 }
@@ -48,8 +57,12 @@ function pickTopUrgent(rows: SubscriptionRow[]): SubscriptionRow[] {
 // TOP_URGENT_LIMIT subscriptions; a single subscription's failure within the batch
 // falls back to its existing cached content if any, or "unavailable" if none — it
 // never fails the whole section.
-export function useWorkspaceAiInsights(rows: SubscriptionRow[]): UseWorkspaceAiInsightsResult {
-  const candidates = pickTopUrgent(rows)
+export function useWorkspaceAiInsights(rows: SubscriptionRow[], isPremium: boolean): UseWorkspaceAiInsightsResult {
+  const allCandidates = pickTopUrgent(rows)
+  // DEC-082: free tier is capped to the single most urgent insight, no partial
+  // teaser for the rest. allCandidates stays uncapped so the caller can tell
+  // "nothing else was urgent" apart from "more existed but got capped".
+  const candidates = isPremium ? allCandidates : allCandidates.slice(0, FREE_TIER_WORKSPACE_LIMIT)
   const candidateIds = candidates.map((row) => row.id).join(",")
 
   const [entries, setEntries] = useState<Map<string, WorkspaceInsightEntry>>(new Map())
@@ -178,6 +191,7 @@ export function useWorkspaceAiInsights(rows: SubscriptionRow[]): UseWorkspaceAiI
 
   return {
     candidates,
+    allCandidateCount: allCandidates.length,
     entries,
     regenerate: () => {
       generate("manual", candidates)

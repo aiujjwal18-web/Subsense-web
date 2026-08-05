@@ -12,6 +12,13 @@ import { buildInsightPrompt, type InsightContext } from "../_shared/insight-prom
 // _shared/urgency.ts itself (see that file's comment).
 const WORKSPACE_BATCH_LIMIT = 3
 
+// DEC-082: free tier sees exactly 1 AI insight. Must match ai-insight-utils.ts's
+// FREE_TIER_WORKSPACE_LIMIT — same cross-boundary duplication as WORKSPACE_BATCH_LIMIT
+// above. Enforced here (not just on the frontend) so a free-tier client can't trigger
+// (and get billed/cached for) 3 OpenAI generations when only 1 is ever shown, and a
+// modified client can't simply request more.
+const FREE_TIER_WORKSPACE_LIMIT = 1
+
 interface SubscriptionRow {
   id: string
   user_id: string
@@ -214,6 +221,11 @@ Deno.serve(async (req) => {
 
   // ---- workspace batch mode ----
   if (requestBody.scope === "workspace") {
+    // Never trust a client-supplied premium flag — this is the live, service-role-callable
+    // entitlement check already used elsewhere in the schema (17_SubSense_Migration_v2.sql:459-473).
+    const { data: isPremium } = await supabaseAdmin.rpc("user_has_active_premium", { target_user_id: userId })
+    const workspaceLimit = isPremium ? WORKSPACE_BATCH_LIMIT : FREE_TIER_WORKSPACE_LIMIT
+
     const { data: subs } = await supabaseAdmin
       .from("subscriptions")
       .select(SUBSCRIPTION_COLUMNS)
@@ -233,7 +245,7 @@ Deno.serve(async (req) => {
       }))
       .filter(({ urgency }) => urgency === "critical" || urgency === "upcoming")
       .sort((a, b) => a.days - b.days)
-      .slice(0, WORKSPACE_BATCH_LIMIT)
+      .slice(0, workspaceLimit)
       .map(({ row }) => row)
 
     if (candidates.length === 0) {

@@ -3,7 +3,8 @@ import { timingSafeEqual } from "jsr:@std/crypto/timing-safe-equal"
 const encoder = new TextEncoder()
 
 // Constant-time string comparison — avoids a timing side-channel on the service-role key check below.
-function safeCompare(a: string, b: string): boolean {
+// Exported for reuse by _shared/razorpay-client.ts's signature verification (same timing-safety need).
+export function safeCompare(a: string, b: string): boolean {
   const aBytes = encoder.encode(a)
   const bBytes = encoder.encode(b)
   if (aBytes.byteLength !== bBytes.byteLength) return false

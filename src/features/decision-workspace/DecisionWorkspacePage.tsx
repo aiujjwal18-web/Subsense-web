@@ -10,40 +10,21 @@ import { Button } from "@/components/ui/button"
 import { AiDecisionCard } from "@/features/ai-insights/AiDecisionCard"
 import { useWorkspaceAiInsights } from "@/features/ai-insights/useWorkspaceAiInsights"
 import { useAuth } from "@/features/auth/AuthContext"
+import { isPremiumActive } from "@/features/premium/premium-utils"
 import { staggerItemMotion } from "@/lib/motion"
 import { supabase } from "@/lib/supabase"
 import {
   SUBSCRIPTION_SELECT_COLUMNS,
   computeRenewalUrgency,
+  computeTotalsByCurrency,
   formatMoney,
   formatRenewalLabel,
   getCategoryName,
   getDisplayName,
-  type Currency,
   type SubscriptionRow,
 } from "@/features/subscriptions/subscription-utils"
 
 type LoadState = "loading" | "error" | "ready"
-
-interface CurrencyTotals {
-  currency: Currency
-  monthly: number
-  annual: number
-}
-
-// Subscriptions can be billed in different currencies (INR/USD); summing raw cost
-// across currencies would silently produce a meaningless number. Totals are kept
-// grouped by currency instead of naively added together or converted.
-function computeTotalsByCurrency(rows: SubscriptionRow[]): CurrencyTotals[] {
-  const map = new Map<Currency, { monthly: number; annual: number }>()
-  for (const row of rows) {
-    const entry = map.get(row.currency) ?? { monthly: 0, annual: 0 }
-    entry.monthly += row.monthly_equivalent ?? 0
-    entry.annual += row.annual_equivalent ?? 0
-    map.set(row.currency, entry)
-  }
-  return Array.from(map.entries()).map(([currency, totals]) => ({ currency, ...totals }))
-}
 
 function SubscriptionListItem({
   row,
@@ -76,16 +57,17 @@ function SubscriptionListItem({
 
 export function DecisionWorkspacePage() {
   const navigate = useNavigate()
-  const { appUser } = useAuth()
+  const { appUser, profile } = useAuth()
   const [rows, setRows] = useState<SubscriptionRow[]>([])
   const [state, setState] = useState<LoadState>("loading")
+  const isPremium = isPremiumActive(profile)
 
   // Called unconditionally (before the loading/error early returns below) — hooks
   // can't be called after a conditional return. Runs fine against the initial empty
   // `rows` and re-derives its top-3-urgent selection once the fetch below populates it.
   // `rows` is always caller-owned (see the explicit .eq("user_id", ...) filter below), so
   // useWorkspaceAiInsights never has to worry about a shared (non-owned) subscription id.
-  const workspaceInsights = useWorkspaceAiInsights(rows)
+  const workspaceInsights = useWorkspaceAiInsights(rows, isPremium)
 
   useEffect(() => {
     // Same rationale as SubscriptionsListPage.tsx: appUser can briefly be null even after
@@ -233,6 +215,14 @@ export function DecisionWorkspacePage() {
               </Button>
             )}
           </div>
+          {/* DEC-082: free tier's cap is explained in text, not a locked-teaser card —
+              only shown when the cap actually clipped something, never to premium users
+              or to a free user whose full urgent set was already ≤1. */}
+          {!isPremium && workspaceInsights.allCandidateCount > workspaceInsights.candidates.length && (
+            <p className="px-1 pb-2 text-xs text-muted-foreground">
+              Free plan shows your single most urgent insight. Upgrade to see up to 3.
+            </p>
+          )}
           {workspaceInsights.candidates.length === 0 ? (
             <div className="rounded-lg border border-border bg-card p-6">
               <p className="text-sm text-muted-foreground">Nothing urgent to review right now.</p>

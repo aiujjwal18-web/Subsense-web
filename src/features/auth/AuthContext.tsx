@@ -20,6 +20,9 @@ export interface AppUser {
 export interface UserProfile {
   id: string
   user_id: string
+  is_premium: boolean
+  premium_expires_at: string | null
+  premium_source: "razorpay_test_mode" | "manual_grant"
   [key: string]: unknown
 }
 
@@ -35,6 +38,7 @@ interface AuthContextValue {
   profile: UserProfile | null
   preferences: UserPreferences | null
   loading: boolean
+  refreshProfile: () => Promise<void>
   signInWithGoogle: () => Promise<void>
   signOut: () => Promise<void>
   signInWithPassword: (
@@ -123,6 +127,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [applySession])
 
+  // Narrow additive re-fetch of just user_profiles, used after a successful premium
+  // purchase so the tier reflects immediately without a full applySession/page reload.
+  const refreshProfile = useCallback(async () => {
+    if (!appUser) return
+    const { data: profileRow } = await supabase
+      .from("user_profiles")
+      .select("*")
+      .eq("user_id", appUser.id)
+      .maybeSingle()
+    setProfile((profileRow as UserProfile | null) ?? null)
+  }, [appUser])
+
   const signInWithGoogle = useCallback(async () => {
     await supabase.auth.signInWithOAuth({ provider: "google" })
   }, [])
@@ -157,6 +173,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         profile,
         preferences,
         loading,
+        refreshProfile,
         signInWithGoogle,
         signOut,
         signInWithPassword,

@@ -4,6 +4,12 @@ import type { Currency } from "@/features/subscriptions/subscription-utils"
 // Workspace batch call.
 export const TOP_URGENT_LIMIT = 3
 
+// DEC-082: free tier sees exactly 1 AI insight (the single most urgent subscription),
+// no partial teaser for the rest. Must match supabase/functions/ai-generate-insight/
+// index.ts's own FREE_TIER_WORKSPACE_LIMIT — duplicated across the Deno/TS runtime
+// boundary, same accepted tradeoff as TOP_URGENT_LIMIT/WORKSPACE_BATCH_LIMIT above.
+export const FREE_TIER_WORKSPACE_LIMIT = 1
+
 // DEC-079: a cached insight is stale after 24 hours.
 const STALENESS_HOURS = 24
 

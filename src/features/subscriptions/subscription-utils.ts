@@ -192,6 +192,28 @@ export function computeNextRenewalDate(
   return formatDateOnly(date)
 }
 
+export interface CurrencyTotals {
+  currency: Currency
+  monthly: number
+  annual: number
+}
+
+// Subscriptions can be billed in different currencies (INR/USD); summing raw cost
+// across currencies would silently produce a meaningless number. Totals are kept
+// grouped by currency instead of naively added together or converted.
+export function computeTotalsByCurrency(
+  rows: Pick<SubscriptionRow, "currency" | "monthly_equivalent" | "annual_equivalent">[]
+): CurrencyTotals[] {
+  const map = new Map<Currency, { monthly: number; annual: number }>()
+  for (const row of rows) {
+    const entry = map.get(row.currency) ?? { monthly: 0, annual: 0 }
+    entry.monthly += row.monthly_equivalent ?? 0
+    entry.annual += row.annual_equivalent ?? 0
+    map.set(row.currency, entry)
+  }
+  return Array.from(map.entries()).map(([currency, totals]) => ({ currency, ...totals }))
+}
+
 export function formatMoney(amount: number, currency: Currency): string {
   try {
     return new Intl.NumberFormat(undefined, {
