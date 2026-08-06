@@ -28,6 +28,25 @@ Two things keep this current automatically:
 
 ---
 
+## 2026-08-06 — Fix: Insights AI summary currency-drop bug (§17a.1)
+
+**Prompt:**
+NEXT_SESSION_AGENDA.md §17a.1: the Insights page's AI-written summary sometimes silently drops one of two currency totals it was given — non-deterministic, since the page computes fresh with no caching and a later reload with no code change can fix or re-break it. Fix by templating both currency totals directly into the summary text server-side rather than trusting the model to faithfully reproduce numbers passed in the prompt — the model should only generate the surrounding sentence/framing, never reproduce the currency figures itself. Test with a 2+-currency portfolio across 5+ regenerations, plus the single-currency case.
+
+**What was done:**
+- `supabase/functions/insights-generate-summary/index.ts` — added `buildSpendLeadSentence()`, which templates the spend total directly from the already-computed `spendSummary` (real numbers, `Intl.NumberFormat` currency formatting matching the frontend's own `formatMoney`), one clause per currency, joined naturally ("X" / "X and Y" / "X, Y, and Z") with no dangling "and" for the single-currency case. This sentence is never model-generated.
+- The OpenAI call (`generateInsightText`) still runs, but its output is now restricted to a short qualitative framing sentence about the duplicate/overlap/pricing signals only — never the spend figures.
+- Added a **code-level guard**, not just a prompt instruction: `FIGURE_PATTERN = /[\d₹$]/` tested against the model's combined `recommendation`+`reason` text. If it matches (a digit or either currency symbol slipped through), the model's text is discarded entirely and replaced with a generic static sentence ("Here's a quick look at where your money is going.") rather than risking a restated or wrong number reaching the user. Final `ai_summary` = `` `${leadSentence} ${safeFramingSentence(modelFraming)}` `` — the lead sentence is unconditional and always correct; only the framing half is ever at risk, and the guard makes a bad framing sentence harmless rather than just less likely.
+- `supabase/functions/_shared/insight-summary-prompt.ts` — rewrote the system prompt: the model is now told explicitly it writes framing only, never restates a number/currency symbol/count (a separate sentence already states the exact spend total), with an inline example. Spend totals are still passed as context in the user prompt (so framing stays grounded in reality) but marked "context only — do not restate this in your response." JSON contract's `recommendation`/`reason` fields reworded to reflect the narrower, no-figures scope.
+
+**Verification:**
+- `npx tsc -b`, `npx eslint src/`, `npm run build` — all clean, same 4-error baseline. Both edited files are Deno Edge Function code, confirmed (again) out of scope for `tsc -b`/`eslint src/`.
+- **Not verifiable from this sandbox**: needs a live deploy and a real 2+-currency portfolio tested across 5+ regenerations (confirming both totals appear every time), the single-currency path (no regression), and a deliberate case designed to tempt the model into restating a number (confirming the guard actually fires) — per this session's plan, held for the user to confirm live before this step is considered closed.
+
+**Commit:** `e84d9d4` — "Fix Insights AI summary currency-drop bug"
+
+---
+
 ## 2026-08-06 — Fix: full-page-reload-on-navigation was a tab-refocus/AuthContext bug, not routing
 
 **Prompt:**
@@ -1652,3 +1671,7 @@ Implement Phase 2 (Authentication and Profile) for SubSense per 16_Implementatio
 **Commit logged:** `3a8e36f` — "Add BUILD_LOG.md entry for Phase 9+10 build" (2026-08-05 19:14) — 1 file changed, 37 insertions(+)
 
 **Commit logged:** `6097a56` — "Fix full-page-reload-on-navigation: AuthContext, not routing" (2026-08-06 20:54) — 1 file changed, 27 insertions(+)
+
+**Commit logged:** `7789d7b` — "Add BUILD_LOG.md entry for full-page-reload fix" (2026-08-06 20:54) — 1 file changed, 26 insertions(+)
+
+**Commit logged:** `e84d9d4` — "Fix Insights AI summary currency-drop bug" (2026-08-06 20:57) — 2 files changed, 69 insertions(+), 12 deletions(-)
