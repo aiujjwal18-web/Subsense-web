@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react"
+import { useNavigate } from "react-router-dom"
 
+import { Button } from "@/components/ui/button"
 import { useAuth } from "@/features/auth/AuthContext"
 import { isPremiumActive } from "@/features/premium/premium-utils"
 import { formatMoney, type Currency } from "@/features/subscriptions/subscription-utils"
@@ -15,7 +17,11 @@ interface DuplicateGroup {
   combined_monthly: number
 }
 
-interface LowerCostAlternative {
+// "Worth a Second Look" (doc06 C-029) — deliberately not "Lower-Cost Alternatives,"
+// which overpromised: this is a real-numbers, intra-portfolio category-average
+// comparison, not a competitor/market-price lookup (no such data exists anywhere in
+// this schema).
+interface CostComparisonItem {
   subscription_id: string
   subscription_name: string
   category: string
@@ -27,8 +33,50 @@ interface LowerCostAlternative {
 interface InsightsSummaryData {
   spend_summary: { by_currency: { currency: string; monthly: number; annual: number }[] }
   duplicates: DuplicateGroup[]
-  lower_cost_alternatives: LowerCostAlternative[]
+  cost_comparisons: CostComparisonItem[]
   ai_summary: string
+}
+
+// Only ever computed for items priced above their category average
+// (insights-generate-summary's findCostComparisons filters this server-side) — this
+// card never renders a below-average item, so "worth a second look" always means
+// "costs more than your own average," never a false-positive on a genuinely cheap
+// subscription.
+function formatPercentAboveAverage(monthlyCost: number, categoryAverageMonthly: number): number | null {
+  if (categoryAverageMonthly <= 0) return null
+  return Math.round(((monthlyCost - categoryAverageMonthly) / categoryAverageMonthly) * 100)
+}
+
+// Mirrors AiDecisionCard.tsx's existing "Review Subscription"/"Remind Me Later"
+// pattern exactly — reused, not reinvented. "Remind Me Later" is a session-local
+// dismiss only (BR-001: AI never performs user actions), no mutation, resets on next
+// visit. No "switch to X" CTA — there's no competitor data to back one.
+function CostComparisonCardItem({ item }: { item: CostComparisonItem }) {
+  const navigate = useNavigate()
+  const [dismissed, setDismissed] = useState(false)
+
+  if (dismissed) return null
+
+  const currency = item.currency as Currency
+  const pct = formatPercentAboveAverage(item.monthly_cost, item.category_average_monthly)
+  const pctClause = pct !== null ? ` — ${pct}% above your ${item.category} average of ${formatMoney(item.category_average_monthly, currency)}/mo` : `, above your ${item.category} average of ${formatMoney(item.category_average_monthly, currency)}/mo`
+
+  return (
+    <div className="rounded-lg border border-border p-3">
+      <p className="text-sm text-foreground">
+        {item.subscription_name} costs {formatMoney(item.monthly_cost, currency)}/mo{pctClause}. Worth checking if a
+        lower tier fits, or whether you're still getting enough value to justify the difference.
+      </p>
+      <div className="mt-3 flex items-center gap-2">
+        <Button type="button" size="sm" onClick={() => navigate(`/subscriptions/${item.subscription_id}`)}>
+          Review Subscription
+        </Button>
+        <Button type="button" variant="outline" size="sm" onClick={() => setDismissed(true)}>
+          Remind Me Later
+        </Button>
+      </div>
+    </div>
+  )
 }
 
 // Premium-tier content. No caching — compute-fresh every page load, bounded cost
@@ -114,21 +162,15 @@ function PremiumInsights() {
       </section>
 
       <section className="rounded-lg border border-border bg-card p-6">
-        <h2 className="font-heading text-sm font-semibold text-foreground">Lower-Cost Alternatives</h2>
-        {data.lower_cost_alternatives.length === 0 ? (
+        <h2 className="font-heading text-sm font-semibold text-foreground">Worth a Second Look</h2>
+        {data.cost_comparisons.length === 0 ? (
           <p className="mt-2 text-sm text-muted-foreground">
             Nothing is priced notably above its category average right now.
           </p>
         ) : (
           <div className="mt-3 space-y-2">
-            {data.lower_cost_alternatives.map((alt) => (
-              <div key={alt.subscription_id} className="rounded-lg border border-border p-3">
-                <p className="text-sm text-foreground">{alt.subscription_name}</p>
-                <p className="text-xs text-muted-foreground">
-                  {formatMoney(alt.monthly_cost, alt.currency as Currency)}/mo vs.{" "}
-                  {formatMoney(alt.category_average_monthly, alt.currency as Currency)}/mo average for {alt.category}
-                </p>
-              </div>
+            {data.cost_comparisons.map((item) => (
+              <CostComparisonCardItem key={item.subscription_id} item={item} />
             ))}
           </div>
         )}

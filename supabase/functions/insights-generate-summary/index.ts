@@ -28,7 +28,7 @@ interface DuplicateGroup {
   combined_monthly: number
 }
 
-interface LowerCostAlternative {
+interface CostComparisonItem {
   subscription_id: string
   subscription_name: string
   category: string
@@ -153,8 +153,10 @@ function safeFramingSentence(modelText: string | null): string {
 // No competitor-pricing data exists anywhere in this schema — inventing one would
 // violate the same no-fabricated-financial-claims discipline ai-generate-insight's
 // financial_impact already enforces. Real, deterministic intra-portfolio comparison
-// only: flag subscriptions priced above their own category's real average.
-function findLowerCostAlternatives(rows: SubscriptionRow[]): LowerCostAlternative[] {
+// only: flag subscriptions priced above their own category's real average. Card name
+// "Worth a Second Look" (doc06 C-029) — deliberately not "lower-cost alternative,"
+// which overpromises what an intra-portfolio average comparison actually delivers.
+function findCostComparisons(rows: SubscriptionRow[]): CostComparisonItem[] {
   const byKey = new Map<string, SubscriptionRow[]>()
   for (const row of rows) {
     const category = getCategoryName(row)
@@ -165,14 +167,14 @@ function findLowerCostAlternatives(rows: SubscriptionRow[]): LowerCostAlternativ
     byKey.set(key, list)
   }
 
-  const alternatives: LowerCostAlternative[] = []
+  const comparisons: CostComparisonItem[] = []
   for (const [key, group] of byKey.entries()) {
     if (group.length < 2) continue
     const [category, currency] = key.split("::")
     const average = group.reduce((sum, s) => sum + (s.monthly_equivalent ?? 0), 0) / group.length
     for (const sub of group) {
       if ((sub.monthly_equivalent ?? 0) > average) {
-        alternatives.push({
+        comparisons.push({
           subscription_id: sub.id,
           subscription_name: getSubscriptionName(sub),
           category,
@@ -183,7 +185,7 @@ function findLowerCostAlternatives(rows: SubscriptionRow[]): LowerCostAlternativ
       }
     }
   }
-  return alternatives
+  return comparisons
 }
 
 Deno.serve(async (req) => {
@@ -215,14 +217,14 @@ Deno.serve(async (req) => {
 
   const spendSummary = computeTotalsByCurrency(rows)
   const duplicates = findDuplicateGroups(rows)
-  const lowerCostAlternatives = findLowerCostAlternatives(rows)
+  const costComparisons = findCostComparisons(rows)
 
   const summaryContext: PortfolioSummaryContext = {
     subscriptionCount: rows.length,
     currencyTotals: spendSummary,
     duplicateCategories: [...new Set(duplicates.filter((d) => d.type === "exact").map((d) => d.category))],
     overlapCategories: [...new Set(duplicates.filter((d) => d.type === "category_overlap").map((d) => d.category))],
-    pricierThanAverage: lowerCostAlternatives.map((a) => ({ subscriptionName: a.subscription_name, category: a.category, currency: a.currency })),
+    pricierThanAverage: costComparisons.map((a) => ({ subscriptionName: a.subscription_name, category: a.category, currency: a.currency })),
   }
 
   const summaryResult = await generateInsightText(buildPortfolioSummaryPrompt(summaryContext))
@@ -241,7 +243,7 @@ Deno.serve(async (req) => {
     {
       spend_summary: { by_currency: spendSummary },
       duplicates,
-      lower_cost_alternatives: lowerCostAlternatives,
+      cost_comparisons: costComparisons,
       ai_summary: aiSummary,
     },
     {}

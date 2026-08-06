@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 const INCLUDED_ITEMS = [
   "Spend summary across all your subscriptions",
   "Duplicate and category-overlap detection",
-  "Lower-cost-alternative suggestions from your own portfolio",
+  "Flags for subscriptions priced above your own category average",
   "An AI-written summary tying it all together",
 ]
 
