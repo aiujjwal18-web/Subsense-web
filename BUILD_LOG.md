@@ -28,6 +28,28 @@ Two things keep this current automatically:
 
 ---
 
+## 2026-08-06 — Fix: full-page-reload-on-navigation was a tab-refocus/AuthContext bug, not routing
+
+**Prompt:**
+NEXT_SESSION_AGENDA.md §17b.5's full-page-reload-on-navigation bug, first step of a 4-item follow-up batch (§17a/§17b only, §17c explicitly out of scope). Diagnose first (dev server + terminal HMR watch + Network tab), fix only once root-caused — don't guess. Initial static analysis ruled out `location.reload()`, stray `<a href>`/`target="_blank"`, and any custom HMR/base config, but couldn't find a smoking gun. Live reproduction was requested next: click every sidebar item, browser back/forward, hard-refresh-then-navigate, and specifically leaving the Insights page right after its AI summary loads.
+
+**What was done:**
+- Live diagnosis (dev server running, terminal watched for Vite HMR "full reload" messages): zero such messages ever appeared. The user's own more precise reproduction narrowed it further — in-app navigation (sidebar, back/forward) never blanks the app; it only happens after switching to another browser tab or app and returning.
+- That pointed at `AuthContext`'s `onAuthStateChange` handler, which called the full `applySession()` reset (`setLoading(true)` → refetch `users`/`user_profiles`/`user_preferences` → `setLoading(false)`) for every event it received, combined with `ProtectedRoute.tsx` rendering a full-screen spinner over the entire app whenever `loading` is true.
+- Root-caused by reading `@supabase/auth-js`'s shipped source directly (`node_modules/@supabase/auth-js/dist/main/GoTrueClient.js`), not assumed: `GoTrueClient` registers a `visibilitychange` listener; on every tab-regains-focus event, `_onVisibilityChanged` → `_recoverAndRefresh()` re-notifies all `onAuthStateChange` subscribers with `SIGNED_IN` (session not near expiry — confirmed the common case, `GoTrueClient.js:4082`) or `TOKEN_REFRESHED` (near expiry). Every tab refocus was triggering a full app-blanking reset that had nothing to do with routing.
+- **First fix attempt was wrong and reverted.** Before this specific reproduction narrowed the trigger to tab-refocus, a page-level stale-while-revalidate caching hook (`useCachedResource`) was drafted and wired into 7 files (Decision Workspace, Subscriptions List, Subscription Details, both shared-subscription hooks, Insights, Profile's plan comparison card) on the reasonable-but-incomplete theory that route-remount-driven local loading state was the cause. Once live reproduction showed in-app navigation never blanks the app, this was recognized as solving a different problem — `ProtectedRoute`'s spinner blanks everything regardless of what any page caches underneath. Reverted in full (`git checkout` on all 8 touched files, deleted the new hook file) rather than shipped alongside the real fix.
+- **Actual fix** — `src/features/auth/AuthContext.tsx`: added `appliedUserIdRef`, tracking the auth user id (or null) the last successful `applySession()` call resolved. The `onAuthStateChange` listener now compares each incoming event's session user id against it — unchanged means this is Supabase's own background re-notification, not a real identity change, so it just calls `setSession(nextSession)` and returns, skipping the loading blank and the needless refetch. Only a genuine identity change (real sign-in, sign-out, or a different user) still runs the full reset.
+- Added **DEC-084** to `08_Decision_Log` (external IIT Capstone docs, bumped v1.56 → v1.57, file renamed to match), correcting DEC-083's "not yet root-caused" status with the confirmed cause and recording the reverted caching-layer scope pivot. Flagged, not edited: docs 10/11/16/19 still carry DEC-083's now-stale "not yet root-caused" language.
+
+**Verification:**
+- `npx tsc -b`, `npx eslint src/`, `npm run build` — all clean, same pre-existing 4-error ESLint baseline, both before and after the revert-then-refix cycle.
+- `git status` confirmed only `AuthContext.tsx` changed after the revert — no leftover trace of the abandoned caching approach.
+- Live-verified by the user: switching to another tab/app and back no longer blanks the app; confirmed working as intended.
+
+**Commit:** `6097a56` — "Fix full-page-reload-on-navigation: AuthContext, not routing"
+
+---
+
 ## 2026-08-05 — Phase 9+10: Insights, Premium Gating, Razorpay Test Mode Demo
 
 **Prompt:**
@@ -1626,3 +1648,7 @@ Implement Phase 2 (Authentication and Profile) for SubSense per 16_Implementatio
 **Commit logged:** `1a7f395` — "Update BUILD_LOG.md (post-commit hook entries)" (2026-08-04 23:25) — 1 file changed, 2 insertions(+)
 
 **Commit logged:** `ddefaa7` — "Add Phase 9+10: Insights, premium gating, Razorpay Test Mode demo" (2026-08-05 19:14) — 21 files changed, 1165 insertions(+), 40 deletions(-)
+
+**Commit logged:** `3a8e36f` — "Add BUILD_LOG.md entry for Phase 9+10 build" (2026-08-05 19:14) — 1 file changed, 37 insertions(+)
+
+**Commit logged:** `6097a56` — "Fix full-page-reload-on-navigation: AuthContext, not routing" (2026-08-06 20:54) — 1 file changed, 27 insertions(+)
