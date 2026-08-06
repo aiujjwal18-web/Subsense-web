@@ -28,6 +28,27 @@ Two things keep this current automatically:
 
 ---
 
+## 2026-08-06 — Rename "Lower-Cost Alternatives" to "Worth a Second Look" (§17a.2)
+
+**Prompt:**
+NEXT_SESSION_AGENDA.md §17a.2: the Insights card shipped as "Lower-Cost Alternatives" overpromises — there's no competitor/market pricing data anywhere in this schema, only an intra-portfolio category-average comparison, confirmed permanent per this session's earlier scope decision (§17c.8 closed against ever adding real competitor pricing). Rename to "Worth a Second Look" (doc06 C-029's own proposed direction) and reword per-item copy from "₹149.00/mo vs. ₹134.00/mo average for Music" to "JioSaavn Pro costs ₹149/mo — 11% above your Music average of ₹134/mo. Worth checking if a lower tier fits, or whether you're still getting enough value to justify the difference." Reuse the existing "Review Subscription"/"Remind Me Later" actions rather than inventing a new CTA. Apply the same reframing to the AI summary prompt's language for this signal. The Edge Function's response key rename is a breaking wire-contract change, so it ships in the same commit as the frontend's consumption of it.
+
+**What was done:**
+- `supabase/functions/insights-generate-summary/index.ts` — renamed `LowerCostAlternative` → `CostComparisonItem`, `findLowerCostAlternatives` → `findCostComparisons`, local var `lowerCostAlternatives` → `costComparisons`, and the response key `lower_cost_alternatives` → `cost_comparisons`.
+- `supabase/functions/_shared/insight-summary-prompt.ts` — confirmed already reframed: Step 2's rewrite of this same file already removed all "lower-cost alternative" language from the model's system prompt and context lines (it now only ever says "priced above their own category's average"), so no further edit was needed here for the language-reframing requirement.
+- `src/features/insights/InsightsPage.tsx` — renamed the local `LowerCostAlternative` type/`lower_cost_alternatives` field to match; section heading "Lower-Cost Alternatives" → "Worth a Second Look"; extracted each item into a new `CostComparisonCardItem` component (own session-local `dismissed` state, mirroring `AiDecisionCard.tsx`'s exact pattern) rendering the new copy — `"{name} costs {cost}/mo — {pct}% above your {category} average of {avg}/mo. Worth checking if a lower tier fits, or whether you're still getting enough value to justify the difference."` — plus "Review Subscription" (navigates to `/subscriptions/:id`) and "Remind Me Later" (dismiss only, no mutation, BR-001) actions, reused verbatim from `AiDecisionCard.tsx` rather than invented fresh. Percentage computed from real numbers (`Math.round(((cost - average) / average) * 100)`), with a defensive fallback if `average` is ever 0.
+- `src/features/insights/InsightsUpsellCard.tsx` — reworded the matching bullet from "Lower-cost-alternative suggestions from your own portfolio" to "Flags for subscriptions priced above your own category average," consistent register with the other three bullets (none of which name a card, all describe function).
+- No new "switch to X" CTA anywhere — there's no data to back one.
+
+**Verification:**
+- `npx tsc -b`, `npx eslint src/`, `npm run build` — all clean, same 4-error baseline.
+- Visual "above vs. below average" check: `findCostComparisons` only ever includes subscriptions priced *above* their category average (`if (monthly_equivalent > average)`) — the card structurally cannot render a below-average item, so the "shouldn't show for a subscription that's actually cheap" requirement is satisfied by the existing filter, not something to separately verify per-render.
+- **Not verifiable from this sandbox**: needs a live deploy and the currency-drop regression suite re-run (2-currency portfolio × 5+ regenerations, plus the deliberate temptation case) per this session's plan, since this step also touches the AI-summary prompt file — confirms the currency guard still fires correctly after this pass's changes, not just that the new copy looks right.
+
+**Commit:** `ca35a85` — "Rename Lower-Cost Alternatives to Worth a Second Look"
+
+---
+
 ## 2026-08-06 — Fix: Insights AI summary currency-drop bug (§17a.1)
 
 **Prompt:**
@@ -1675,3 +1696,7 @@ Implement Phase 2 (Authentication and Profile) for SubSense per 16_Implementatio
 **Commit logged:** `7789d7b` — "Add BUILD_LOG.md entry for full-page-reload fix" (2026-08-06 20:54) — 1 file changed, 26 insertions(+)
 
 **Commit logged:** `e84d9d4` — "Fix Insights AI summary currency-drop bug" (2026-08-06 20:57) — 2 files changed, 69 insertions(+), 12 deletions(-)
+
+**Commit logged:** `025431c` — "Add BUILD_LOG.md entry for currency-drop fix" (2026-08-06 20:57) — 1 file changed, 23 insertions(+)
+
+**Commit logged:** `ca35a85` — "Rename Lower-Cost Alternatives to Worth a Second Look" (2026-08-06 21:12) — 3 files changed, 66 insertions(+), 22 deletions(-)
