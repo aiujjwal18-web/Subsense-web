@@ -67,6 +67,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Bumped on every session change so a slower, stale request can't overwrite
   // state set by a newer one (e.g. sign-out immediately followed by sign-in).
   const requestIdRef = useRef(0)
+  // Tracks the identity (auth user id, or null if signed out) applySession last ran
+  // for — lets the listener below tell a genuine identity change apart from Supabase
+  // re-notifying the same session. See the listener's comment for why that
+  // distinction matters.
+  const appliedUserIdRef = useRef<string | null>(null)
 
   const applySession = useCallback(async (nextSession: Session | null) => {
     const requestId = ++requestIdRef.current
@@ -78,6 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setProfile(null)
       setPreferences(null)
       setLoading(false)
+      appliedUserIdRef.current = null
       return
     }
 
@@ -96,6 +102,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setProfile(null)
       setPreferences(null)
       setLoading(false)
+      // Deliberately left unset (not nulled) — a users-row-provisioning race means
+      // no identity actually resolved yet, so a later re-notification for this same
+      // session should retry the full lookup above, not be treated as "unchanged".
       return
     }
 
@@ -111,6 +120,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfile(profileRow ?? null)
     setPreferences(preferencesRow ?? null)
     setLoading(false)
+    appliedUserIdRef.current = nextSession.user.id
   }, [])
 
   useEffect(() => {
@@ -119,6 +129,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      // Supabase's own client re-notifies subscribers on every tab/window
+      // visibilitychange-to-visible, not just on a real sign-in/out — confirmed via
+      // @supabase/auth-js's GoTrueClient._onVisibilityChanged -> _recoverAndRefresh,
+      // which fires SIGNED_IN (session not near expiry) or TOKEN_REFRESHED (session
+      // near expiry) on essentially every tab refocus. Running the full applySession
+      // reset for these blanked the entire app on every tab switch: setLoading(true)
+      // makes ProtectedRoute render its full-screen spinner over everything, then
+      // users/user_profiles/user_preferences get needlessly re-fetched — this was the
+      // actual cause of the reported "full reload on navigation" (it's not a route
+      // remount at all, and confirmed not to fire from in-app navigation). Only run
+      // the full reset when the identity actually changed; otherwise just keep the
+      // refreshed token current.
+      const nextUserId = nextSession?.user.id ?? null
+      if (nextUserId === appliedUserIdRef.current) {
+        setSession(nextSession)
+        return
+      }
       applySession(nextSession)
     })
 
