@@ -9,19 +9,25 @@ export interface PortfolioSummaryContext {
 }
 
 // Mirrors insight-prompt.ts's structure and AI Experience Standard/Copy Tone rules
-// (02_Experience_Strategy_v1.18, DEC-045). Different from the per-subscription prompt
-// in one deliberate way: there, cost figures are withheld from the model entirely to
-// prevent a hallucinated number reaching the user. Here, the numbers below are already
-// computed deterministically (spend_summary/duplicates/lower_cost_alternatives) — the
-// model's only job is prose framing over them, never inventing a figure of its own.
-const SYSTEM_PROMPT = `You are the AI Insight writer for SubSense, a personal subscription-tracking app. You write a short, grounded portfolio-level summary to help the user understand their subscription spending at a glance, not to decide for them.
+// (02_Experience_Strategy_v1.18, DEC-045). The spend total sentence is now templated
+// directly from real numbers server-side (insights-generate-summary/index.ts's
+// buildSpendLeadSentence) rather than asked of the model — a prior version had the
+// model restate the currency totals itself and it would non-deterministically drop
+// one when a portfolio had 2+ currencies. The model's only job here is a short
+// qualitative framing sentence over the duplicate/overlap/pricier-than-average
+// signals, and it is explicitly told never to restate a figure, currency symbol, or
+// subscription count — insights-generate-summary/index.ts additionally enforces this
+// with a code-level guard (never trusting the instruction alone), discarding the
+// model's text and substituting a generic fallback sentence if it slips through.
+const SYSTEM_PROMPT = `You are the AI Insight writer for SubSense, a personal subscription-tracking app. You write one short, grounded observation about a subscription portfolio's duplicate/overlap/pricing signals to help the user decide what's worth a look, not to decide for them.
 
 AI Experience Standard — output must feel like guidance, not command:
-Preferred tone: "You're spending this much across N subscriptions." / "Two of your subscriptions overlap in category." / "You may want to review it."
+Preferred tone: "Two of your subscriptions overlap in category." / "One of these is priced above the rest." / "You may want to review it."
 Avoid: "Cancel this." / "This is bad." / "You must switch." / "We will cancel for you."
 
 AI Copy Tone rules (apply all of these):
-- Use only the numbers and facts given to you below — never invent a figure, price, or subscription name not present in the context.
+- Use only the facts given to you below — never invent a signal, category, or subscription name not present in the context.
+- **Never state a number, currency symbol, or subscription count, even in passing** — a separate sentence elsewhere already states the exact spend total, and restating it yourself risks getting it wrong. Describe the duplicate/overlap/pricing signal in words only (e.g. "your Music subscriptions overlap" not "2 Music subscriptions overlap").
 - Vary sentence opening and structure — do not reuse a generic template.
 - Contractions are fine ("you're," "it's").
 - No manufactured urgency — do not add words like "urgent," "act now," or exclamation points.
@@ -29,9 +35,12 @@ AI Copy Tone rules (apply all of these):
 - Never tell the user what to do in commanding language, and never claim you will take an action on their behalf.
 
 Respond with strict JSON only, no markdown, no code fences, exactly this shape:
-{"recommendation": "one short paragraph summarizing the portfolio's spend and any overlap/duplicate signal, in your own words", "reason": "one short closing sentence highlighting the single most useful thing to look at, or noting there's nothing notable if that's true"}`
+{"recommendation": "one short sentence framing the portfolio's duplicate/overlap/pricing signal in your own words, no numbers or currency symbols", "reason": "one short closing sentence highlighting the single most useful thing to look at, or noting there's nothing notable if that's true — same rule, no numbers or currency symbols"}`
 
 export function buildPortfolioSummaryPrompt(context: PortfolioSummaryContext): InsightPrompt {
+  // Spend totals are still given as context (so the model's framing can be
+  // consistent with reality) but the model is explicitly told above never to restate
+  // them — the actual figures reach the user via the templated lead sentence instead.
   const totalsLine = context.currencyTotals.length
     ? context.currencyTotals
         .map((t) => `${t.monthly.toFixed(2)} ${t.currency} per month (${t.annual.toFixed(2)} ${t.currency} per year)`)
@@ -53,7 +62,7 @@ export function buildPortfolioSummaryPrompt(context: PortfolioSummaryContext): I
     : "No subscription is priced notably above its category average."
 
   const user = `Portfolio: ${context.subscriptionCount} active subscription${context.subscriptionCount === 1 ? "" : "s"}.
-Spend: ${totalsLine}.
+Spend (context only — do not restate this in your response): ${totalsLine}.
 ${duplicateLine}
 ${overlapLine}
 ${pricierLine}

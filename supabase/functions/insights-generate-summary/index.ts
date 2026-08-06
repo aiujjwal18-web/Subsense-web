@@ -109,6 +109,47 @@ function findDuplicateGroups(rows: SubscriptionRow[]): DuplicateGroup[] {
   return groups
 }
 
+function formatMoney(amount: number, currency: string): string {
+  try {
+    return new Intl.NumberFormat(undefined, { style: "currency", currency, maximumFractionDigits: 2 }).format(amount)
+  } catch {
+    return `${currency} ${amount.toFixed(2)}`
+  }
+}
+
+// Templates the spend total directly from real numbers, one clause per currency,
+// rather than asking the model to restate them — a prior version handed the model a
+// semicolon-joined list of totals and trusted it to faithfully reproduce every one in
+// its own prose; with 2+ currencies it would non-deterministically drop one. This
+// function is the actual fix: the figures the user sees are never model-generated.
+function buildSpendLeadSentence(currencyTotals: CurrencyTotal[], subscriptionCount: number): string {
+  if (currencyTotals.length === 0) {
+    return "You have no active subscriptions right now."
+  }
+  const amounts = currencyTotals.map((t) => formatMoney(t.monthly, t.currency))
+  const amountsPhrase =
+    amounts.length === 1
+      ? amounts[0]
+      : amounts.length === 2
+        ? `${amounts[0]} and ${amounts[1]}`
+        : `${amounts.slice(0, -1).join(", ")}, and ${amounts[amounts.length - 1]}`
+  return `You're spending ${amountsPhrase} across ${subscriptionCount} active subscription${subscriptionCount === 1 ? "" : "s"} this month.`
+}
+
+// Code-level guard, not just a prompt instruction — the prompt already tells the
+// model never to restate a figure, but a prompt instruction alone isn't reliable
+// enough given this is the exact bug being fixed. Any digit or currency symbol in the
+// model's framing text means it's restating (or worse, misstating) a number that the
+// lead sentence above already states correctly — discard it rather than risk showing
+// a wrong or duplicated figure.
+const FIGURE_PATTERN = /[\d₹$]/
+const FALLBACK_FRAMING_SENTENCE = "Here's a quick look at where your money is going."
+
+function safeFramingSentence(modelText: string | null): string {
+  if (!modelText || FIGURE_PATTERN.test(modelText)) return FALLBACK_FRAMING_SENTENCE
+  return modelText
+}
+
 // No competitor-pricing data exists anywhere in this schema — inventing one would
 // violate the same no-fabricated-financial-claims discipline ai-generate-insight's
 // financial_impact already enforces. Real, deterministic intra-portfolio comparison
@@ -185,9 +226,16 @@ Deno.serve(async (req) => {
   }
 
   const summaryResult = await generateInsightText(buildPortfolioSummaryPrompt(summaryContext))
-  const aiSummary = summaryResult.ok
+  const modelFraming = summaryResult.ok
     ? [summaryResult.recommendation, summaryResult.reason].filter(Boolean).join(" ")
-    : "A summary isn't available right now, but the numbers above are up to date."
+    : null
+
+  // The lead sentence (real numbers, templated) is never at risk — only the model's
+  // own framing text passes through the figure guard, and falls back to a generic
+  // sentence rather than the whole summary being unavailable if the model's call
+  // fails or its output slips a number past the prompt instruction.
+  const leadSentence = buildSpendLeadSentence(spendSummary, rows.length)
+  const aiSummary = `${leadSentence} ${safeFramingSentence(modelFraming)}`.trim()
 
   return successResponse(
     {
