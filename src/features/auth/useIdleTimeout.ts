@@ -4,26 +4,43 @@ import { toast } from "sonner"
 import { useAuth } from "@/features/auth/AuthContext"
 import { isCheckoutOpen } from "@/lib/checkout-state"
 
-const WARNING_AFTER_MS = 15 * 60 * 1000
-const SIGN_OUT_AFTER_MS = 20 * 60 * 1000
+// Demo-week values (locked, not a placeholder): 30s warning / 40s sign-out, chosen
+// so the feature is actually demoable live rather than requiring a real 15-20 minute
+// wait. Revisit to ~4 / 4.5 minutes if this continues past the capstone as a real
+// product — 15/20 minutes (this project's first-pass value) was judged too lax even
+// for that later stage, let alone for a demo.
+const WARNING_AFTER_MS = 30 * 1000
+const SIGN_OUT_AFTER_MS = 40 * 1000
 
 // Elapsed idle time is measured against a timestamp rather than re-armed setTimeouts,
 // so the checkout suspension below is a single arithmetic adjustment instead of a
-// teardown/rebuild of pending timers. 15s granularity means the two thresholds fire
-// within 15s of their nominal time, which is well inside the tolerance of a 15/20
-// minute policy. Browsers throttle intervals in a backgrounded tab; that only ever
-// delays the sign-out, never fires it early.
-const TICK_INTERVAL_MS = 15 * 1000
+// teardown/rebuild of pending timers. At demo-week's 30s/40s thresholds a coarse tick
+// would eat most of the grace window, so this runs at 1s granularity instead of the
+// 15s that was fine against a 15-20 minute policy — rescale this back up (e.g. 15s)
+// if the thresholds below are ever moved back into minutes. Browsers throttle
+// intervals in a backgrounded tab; that only ever delays the sign-out, never fires it
+// early.
+const TICK_INTERVAL_MS = 1 * 1000
 
 // The clock advances at most once per throttle window, so a mousemove storm costs one
 // comparison per event and nothing more — this *is* the throttle, no second timestamp
-// needed.
-const ACTIVITY_THROTTLE_MS = 5 * 1000
+// needed. Tightened alongside TICK_INTERVAL_MS for the same demo-week-granularity
+// reason.
+const ACTIVITY_THROTTLE_MS = 1 * 1000
 
 const WARNING_TOAST_ID = "idle-timeout-warning"
 
-const WARNING_GRACE_MINUTES = Math.round((SIGN_OUT_AFTER_MS - WARNING_AFTER_MS) / 60_000)
-const SIGN_OUT_MINUTES = Math.round(SIGN_OUT_AFTER_MS / 60_000)
+// Handles both the current sub-minute demo values and the eventual minutes-scale
+// values in one function, rather than a minutes-only computation that would silently
+// round 30s/40s down to "0 minutes" / misleadingly up to "1 minutes".
+function formatDuration(ms: number): string {
+  if (ms < 60_000) {
+    const seconds = Math.round(ms / 1000)
+    return `${seconds} second${seconds === 1 ? "" : "s"}`
+  }
+  const minutes = Math.round(ms / 60_000)
+  return `${minutes} minute${minutes === 1 ? "" : "s"}`
+}
 
 const ACTIVITY_EVENTS: readonly string[] = ["mousemove", "keydown", "scroll", "click", "touchstart"]
 
@@ -102,7 +119,7 @@ export function useIdleTimeout(enabled: boolean) {
         // Sign-out is the only thing this timer is ever allowed to do — never a
         // payment, cancellation, renewal, or downgrade (BR-001).
         void signOut().then(() => {
-          toast.info(`Signed out after ${SIGN_OUT_MINUTES} minutes of inactivity.`)
+          toast.info(`Signed out after ${formatDuration(SIGN_OUT_AFTER_MS)} of inactivity.`)
         })
         return
       }
@@ -111,7 +128,7 @@ export function useIdleTimeout(enabled: boolean) {
         warnedRef.current = true
         toast.warning("Still there?", {
           id: WARNING_TOAST_ID,
-          description: `You'll be signed out in about ${WARNING_GRACE_MINUTES} minutes.`,
+          description: `You'll be signed out in about ${formatDuration(SIGN_OUT_AFTER_MS - WARNING_AFTER_MS)}.`,
           duration: Number.POSITIVE_INFINITY,
           action: { label: "Stay signed in", onClick: resetIdleClock },
         })
