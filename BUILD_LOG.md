@@ -28,6 +28,29 @@ Two things keep this current automatically:
 
 ---
 
+## 2026-08-07 — Idle-timeout threshold retune for demo week + duration-copy fix
+
+**Prompt:**
+Follow-up to the idle-session timeout built earlier the same day (`d1d6d48`, already committed and pushed — not to be recommitted, amended, or squashed into). The thresholds were adjusted from the original 15 min/20 min down to demo-week values (30s warning / 40s sign-out), the tick interval and activity throttle were tightened from 15s/5s to 1s/1s to keep reasonable granularity at these smaller thresholds, and a real bug this surfaced was fixed — the toast copy was computing whole minutes and would have silently shown "signed out in about 0 minutes." Fixed with a new `formatDuration()` helper that renders seconds below a minute and minutes above it. Already manually live-verified working (warning toast, "Stay signed in" reset, real sign-out, and the Razorpay-checkout suspension) before being asked to commit. Commit as its own separate commit with a message making clear it's a follow-up threshold/copy adjustment rather than the original build, then add this BUILD_LOG entry as its own separate commit per the repo's one-commit-per-logical-change convention.
+
+**Skills invoked:**
+- None newly invoked. This is a constants-and-copy follow-up to work already built under `superpowers` discipline in the previous entry; no new feature surface, no design surface, and no bug to root-cause (the "0 minutes" defect was already identified and fixed by the user before this commit). `impeccable` remains not applicable for the same reason as the previous entry — the only rendered output is an existing Sonner toast, no new visual surface.
+
+**What was done:**
+- `src/features/auth/useIdleTimeout.ts` — `WARNING_AFTER_MS` 15 min → 30s, `SIGN_OUT_AFTER_MS` 20 min → 40s. Commented in-file as a **locked demo-week value, not a placeholder**, with the note that a real post-capstone product should revisit to roughly 4 / 4.5 minutes — 15/20 minutes was judged too lax even for that later stage, let alone a demo.
+- `TICK_INTERVAL_MS` 15s → 1s and `ACTIVITY_THROTTLE_MS` 5s → 1s. This is a genuine correctness requirement at the new thresholds, not cosmetic tuning: the grace window between warning and sign-out is now 10 seconds, and a 15-second tick would have consumed the entire window before firing. Both comments now record the coupling explicitly, so the granularity gets rescaled back up if the thresholds ever move back into minutes.
+- **Bug fix — replaced `WARNING_GRACE_MINUTES`/`SIGN_OUT_MINUTES` with `formatDuration(ms)`.** The two removed constants divided by `60_000` and rounded, which was correct only while the thresholds were minutes-scale. At 30s/40s the warning toast would have rendered "You'll be signed out in about 0 minutes" (`Math.round(10_000 / 60_000)` → `0`) and the sign-out toast "Signed out after 1 minutes of inactivity" — wrong *and* ungrammatical. `formatDuration()` branches at the one-minute mark, renders seconds below it and minutes above, and pluralises both units, so the copy is correct at either scale rather than only at the scale it happened to be written for. Both call sites now pass a duration in ms and let the helper own the formatting.
+- Nothing else touched. `checkout-state.ts`, `ProtectedRoute.tsx`, `UpgradeButton.tsx`, and `AuthContext.tsx` are all unchanged from `d1d6d48` — this commit is one file.
+
+**Verification:**
+- `npx tsc -b`, `npx eslint src/`, `npm run build` — all clean, same 4-error pre-existing baseline (`badge.tsx`, `button.tsx`, `tabs.tsx`, `AuthContext.tsx`, all `react-refresh/only-export-components`). Re-run against this working tree specifically, not carried over from the previous entry's run.
+- **Live manual verification — done, by the user, before this commit.** This closes the gap the previous entry explicitly left open. All four interactive checks confirmed working against the real app in a browser: (a) the warning toast fires at the warning threshold, (b) "Stay signed in" resets the idle clock and dismisses it, (c) sign-out actually fires at the sign-out threshold, and (d) **the one that actually mattered** — an open Razorpay checkout suspends the timer rather than signing the user out mid-payment, confirming the freeze-don't-reset tick behaviour works against the real third-party iframe overlay and not just in principle.
+- With (d) confirmed live, the idle-session-timeout feature is now considered closed rather than open-pending-verification, which is the state the previous entry left it in.
+
+**Commit:** `44053bb` — "Retune idle-timeout thresholds for demo week and fix duration copy"
+
+---
+
 ## 2026-08-07 — Idle-session timeout with Razorpay-checkout suspension (§17b.4)
 
 **Prompt:**
@@ -1739,3 +1762,7 @@ Implement Phase 2 (Authentication and Profile) for SubSense per 16_Implementatio
 **Commit logged:** `d670ed7` — "@ Add idle-session timeout with checkout suspension" (2026-08-07 18:12) — 4 files changed, 194 insertions(+), 11 deletions(-)
 
 **Commit logged:** `d1d6d48` — "Add idle-session timeout with checkout suspension" (2026-08-07 18:12) — 4 files changed, 194 insertions(+), 11 deletions(-)
+
+**Commit logged:** `d2d83ab` — "Add BUILD_LOG.md entry for idle-session timeout" (2026-08-07 18:14) — 1 file changed, 39 insertions(+)
+
+**Commit logged:** `44053bb` — "Retune idle-timeout thresholds for demo week and fix duration copy" (2026-08-07 19:07) — 1 file changed, 30 insertions(+), 13 deletions(-)
