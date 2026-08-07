@@ -3,6 +3,7 @@ import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/features/auth/AuthContext"
+import { setCheckoutOpen } from "@/lib/checkout-state"
 import { supabase } from "@/lib/supabase"
 import { loadRazorpayCheckout } from "./loadRazorpayCheckout"
 import type { RazorpayCheckoutSuccessResponse } from "./razorpay-types"
@@ -20,19 +21,25 @@ export function UpgradeButton({ planCode }: UpgradeButtonProps) {
   const [isProcessing, setIsProcessing] = useState(false)
 
   async function verifyPayment(response: RazorpayCheckoutSuccessResponse) {
-    const { data, error } = await supabase.functions.invoke("razorpay-verify-payment", {
-      body: response,
-    })
+    try {
+      const { data, error } = await supabase.functions.invoke("razorpay-verify-payment", {
+        body: response,
+      })
 
-    setIsProcessing(false)
+      if (error || !data?.success) {
+        toast.error("Payment verification failed. If you were charged, contact support.")
+        return
+      }
 
-    if (error || !data?.success) {
-      toast.error("Payment verification failed. If you were charged, contact support.")
-      return
+      await refreshProfile()
+      toast.success("You're now on Premium.")
+    } finally {
+      // finally, not a straight-line call: the idle timer stays suspended until
+      // verification has fully settled, and must resume even if this throws — a
+      // stuck-true flag would disable the idle timeout for the rest of the session.
+      setCheckoutOpen(false)
+      setIsProcessing(false)
     }
-
-    await refreshProfile()
-    toast.success("You're now on Premium.")
   }
 
   async function handleUpgrade() {
@@ -74,13 +81,24 @@ export function UpgradeButton({ planCode }: UpgradeButtonProps) {
           void verifyPayment(response)
         },
         modal: {
-          ondismiss: () => setIsProcessing(false),
+          ondismiss: () => {
+            setCheckoutOpen(false)
+            setIsProcessing(false)
+          },
         },
         theme: { color: "#FFC800" },
       })
+      // Razorpay renders checkout as a third-party iframe overlay, which emits no
+      // activity events on our own document — without this the idle timer would see
+      // total silence and could sign the user out mid-payment. Cleared again in both
+      // exits from here: modal.ondismiss above, and verifyPayment's finally block.
+      setCheckoutOpen(true)
       checkout.open()
     } catch {
       toast.error("Couldn't start checkout. Please try again.")
+      // Covers the narrow case where checkout.open() itself throws after the flag was
+      // set — no overlay ever appeared, so the idle timer must not stay suspended.
+      setCheckoutOpen(false)
       setIsProcessing(false)
     }
   }
