@@ -342,11 +342,18 @@ export function IntegrationStatusPanel() {
                 <span className="text-sm text-foreground">{label}</span>
                 <span className="flex items-baseline gap-2">
                   {/* Word, not a coloured dot. Status is never conveyed by colour alone
-                      anywhere in this app; colour only reinforces the text. */}
+                      anywhere in this app; colour only reinforces the text.
+                      A reason can accompany a healthy status too — Resend's send-only key
+                      is reachable and working, but could not answer a full read check, and
+                      flattening that to a bare "Reachable" would hide a real caveat. */}
                   <span
                     className={`text-sm ${status.ok ? "text-[var(--chart-3)]" : "text-destructive"}`}
                   >
-                    {status.ok ? "Reachable" : (status.reason ?? "Failed")}
+                    {status.ok
+                      ? status.reason === "restricted_key"
+                        ? "Reachable (send-only key)"
+                        : "Reachable"
+                      : (status.reason ?? "Failed")}
                   </span>
                   <span className="font-mono text-xs text-muted-foreground">
                     {status.latency_ms}ms

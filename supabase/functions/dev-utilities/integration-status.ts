@@ -22,7 +22,13 @@ import { successResponse } from "../_shared/http.ts"
 
 const TIMEOUT_MS = 5_000
 
-type FailureReason = "missing_key" | "auth_failed" | "timeout" | "network_error" | `http_${number}`
+type FailureReason =
+  | "missing_key"
+  | "auth_failed"
+  | "timeout"
+  | "network_error"
+  | "restricted_key"
+  | `http_${number}`
 
 interface ServiceStatus {
   ok: boolean
@@ -35,7 +41,17 @@ function classify(status: number): FailureReason {
   return `http_${status}`
 }
 
-async function timedFetch(url: string, headers: Record<string, string>): Promise<ServiceStatus> {
+// Optional per-service reinterpretation of a non-2xx response. Runs server-side over the
+// provider's body and may only return values from the fixed FailureReason vocabulary --
+// the body itself never escapes this function, preserving the rule that provider
+// responses (which echo request details) are never forwarded to a caller.
+type ErrorInterpreter = (status: number, body: string) => ServiceStatus | null
+
+async function timedFetch(
+  url: string,
+  headers: Record<string, string>,
+  interpretError?: ErrorInterpreter
+): Promise<ServiceStatus> {
   const startedAt = Date.now()
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS)
@@ -44,6 +60,11 @@ async function timedFetch(url: string, headers: Record<string, string>): Promise
     const response = await fetch(url, { method: "GET", headers, signal: controller.signal })
     const latency = Date.now() - startedAt
     if (!response.ok) {
+      if (interpretError) {
+        const body = await response.text().catch(() => "")
+        const reinterpreted = interpretError(response.status, body)
+        if (reinterpreted) return { ...reinterpreted, latency_ms: latency }
+      }
       return { ok: false, latency_ms: latency, reason: classify(response.status) }
     }
     return { ok: true, latency_ms: latency }
@@ -72,10 +93,36 @@ function checkOpenAi(): Promise<ServiceStatus> {
   return timedFetch("https://api.openai.com/v1/models", { Authorization: `Bearer ${apiKey}` })
 }
 
+// A Resend API key carries a permission level: "Sending access" or "Full access". A
+// sending-access key can POST /emails but is rejected on GET /domains, which needs
+// domain-read permission.
+//
+// The first version of this check reported that rejection as auth_failed, which was
+// wrong and actively misleading: it claimed the Resend integration was broken seconds
+// after send-reminder-email had delivered a real email with the same key. The request
+// itself was never at fault -- env var, host and Authorization header are byte-identical
+// to _shared/resend-client.ts's working send. Only the endpoint differs, and the key is
+// simply not scoped to read it.
+//
+// Resend answers a restricted key with `name: "restricted_api_key"` and a message saying
+// the key may only send emails. That response still proves the credential is real and
+// recognised -- Resend authenticated it before refusing the scope -- so it is reported as
+// healthy, with the reason noting the check could not be a full read.
+// An unrecognised key returns a different error and still falls through to auth_failed.
+function interpretResendError(status: number, body: string): ServiceStatus | null {
+  if (status !== 401 && status !== 403) return null
+  const restricted = /restricted_api_key|restricted to only send/i.test(body)
+  return restricted ? { ok: true, latency_ms: 0, reason: "restricted_key" } : null
+}
+
 function checkResend(): Promise<ServiceStatus> {
   const apiKey = Deno.env.get("RESEND_API_KEY")
   if (!apiKey) return Promise.resolve({ ok: false, latency_ms: 0, reason: "missing_key" })
-  return timedFetch("https://api.resend.com/domains", { Authorization: `Bearer ${apiKey}` })
+  return timedFetch(
+    "https://api.resend.com/domains",
+    { Authorization: `Bearer ${apiKey}` },
+    interpretResendError
+  )
 }
 
 function checkRazorpay(): Promise<ServiceStatus> {
