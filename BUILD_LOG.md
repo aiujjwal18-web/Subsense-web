@@ -28,6 +28,47 @@ Two things keep this current automatically:
 
 ---
 
+## 2026-08-09 — Post-Phase-11 live-testing fixes, dev-utilities hardening, and doc reconciliation
+
+**Prompt:**
+A series of separate, individually-approved follow-ups after Phase 11 shipped, most of them bugs found by the user live-testing the running app rather than planned work. In order: fix `SubscriptionCard`'s nested interactive controls (deferred from the Task 10 audit); fix the `send-shared-payment-reminder` back-dating bug found during Task 3; restrict `/dev-utilities` to three named accounts on both client and server; fix Integration Status reporting Resend as `auth_failed` while the real integration demonstrably worked; fix Decision Workspace's Shared Payment Activity widget showing an empty state for a user with a real pending request; hide the unbuilt Potential Savings placeholder; scope Shared Payment Activity to a 7-day window with countdowns; fix a Lighthouse Critical finding on the Add Subscription button; commit a Razorpay checkout theme-colour fix; commit a logo icon crop/rounding fix; reconcile CLAUDE.md's stale brand section with the live Cyber Lime state; and gitignore the Supabase CLI's local state directory. Standing instruction throughout: one commit per logical change, `tsc -b`/`eslint src/`/`npm run build` clean before each, and stop and flag anything larger than described rather than improvising past it.
+
+**Skills invoked:**
+- `systematic-debugging` for the Resend health-check failure, per CLAUDE.md's root-cause-before-fix rule. This is the entry that most justified the discipline: the obvious fix (assume a malformed request) would have been wrong, and Phase 2's working-vs-broken comparison is what disproved it.
+- `impeccable` (`detect.mjs`) run against every changed frontend file; zero findings throughout.
+- No new `superpowers` planning pass — these were discrete approved fixes against an already-approved plan, not new scope.
+- TDD gap unchanged and still flagged: no test runner exists, so every fix below is verified by static checks plus the user's live re-testing, never by an automated regression test. Several of these bugs were found by the user in the browser precisely because nothing automated could have caught them.
+
+**What was done:**
+
+*Two real defects found in already-shipped code (neither was the task as originally framed):*
+- **`send-shared-payment-reminder` could never send a first-ever reminder.** While building `dev-utilities/trigger-reminder.ts`, reading the live schema showed `reminders.updated_at` defaults to `now()` with no trigger override, while `send-reminder-email`'s claim query requires `updated_at <= now() - 10 minutes` as a concurrency lease. A freshly inserted row therefore could never be claimed by the function it was immediately handed to, returning 404. The bug was invisible because the find-or-create's *find* branch normally supplies a row already older than the lease — only a genuinely first-ever reminder for a payment request took the create path. Fixed by back-dating `updated_at` 15 minutes on insert (`9a9d426`), matching `trigger-reminder.ts`.
+- **Decision Workspace's Shared Payment Activity had no query at all.** Reported as a wrong-user-id/wrong-join bug; investigation found the widget was a hardcoded `<section>` with a static empty-state paragraph and zero references to `payment_requests` anywhere on the page. It was structurally incapable of showing anything, for any user. Implemented rather than repaired (`a56aae0`), mirroring `useSharedSubscriptionsList`'s proven query shape. The key correctness point: direction is resolved **per row** by comparing each request's own `shared_members.user_id` to the viewer — keying off the share's `owner_user_id` would show owners their incoming requests while hiding every member's own debt, which was exactly the reported symptom.
+
+*Integration Status false negative (`cd95c97`):* Resend reported `auth_failed` seconds after a real email had been delivered with the same key. Root-caused as key **scope**, not request format — env var, host and `Authorization` header are byte-identical to the working send in `_shared/resend-client.ts`; only the endpoint differs. A Resend key with *Sending access* is authorised for `POST /emails` but rejected on `GET /domains`. The check discarded the response body, so a scope rejection and an invalid key both collapsed into `auth_failed`. Added an optional per-service error interpreter that recognises `restricted_api_key` and reports healthy with reason `restricted_key`; the fixed reason vocabulary still prevents any provider body reaching a caller.
+
+*Accessibility (`f3c3312`, `6a6e61e`):*
+- `SubscriptionCard` was a `div` with `role="button"` containing real `<Button>`s and a dialog. Restructured so the container is inert and the subscription name is the single "open" control, with a stretched `::after` preserving click-anywhere behaviour. Two implementation details are load-bearing and commented in the file: the title button must not be `position: relative` (its overlay resolves against the card), and `truncate` had to move to an inner span because `overflow-hidden` would clip the overlay away.
+- Lighthouse flagged the Add Subscription button as having no accessible name. Root cause was responsive, not a plain missing label: the text is `hidden sm:inline`, so below 640px it is `display:none` and absent from the accessibility tree, leaving only an `aria-hidden` icon. **This is a genuine gap in the Task 10 audit** — that pass reasoned about markup at desktop width and did not account for the breakpoint, and Lighthouse caught it because it audits at a mobile viewport by default. Worth remembering for any future audit.
+
+*Dev-utilities hardening (`72e72b4`):* `/dev-utilities` and its Edge Function were reachable by any authenticated user. Gated both sides to three named accounts. The server check is the real boundary — a valid session JWT can POST directly without loading the page. The email is read from the `users` table by `userId`, never from the request body. The client guard reads `session.user.email` rather than `appUser` specifically because `ProtectedRoute` guarantees a session on the first render pass while `appUser` can be null for a tick, which would flash the panels before redirecting. Allowlist is duplicated across the Vite/Deno boundary by necessity (no shared import path) with `KEEP IN SYNC` warnings, and parity was verified programmatically rather than by eye.
+
+*Decision Workspace scope (`9933711`, `deba2c6`):* Removed the unbuilt Potential Savings placeholder (UI-only; grep confirmed no engine existed behind it). Scoped Shared Payment Activity to a 7-day window with due countdowns, matching Upcoming Renewals' cutoff on the same page — which means **overdue rows are deliberately kept**, since that filter is `computeRenewalUrgency(...) !== "normal"`, i.e. 7-days-or-fewer *including* overdue. Sort changed to soonest-due-first. `/shared` still lists everything regardless of date and has a zero-line diff.
+
+*Presentation and housekeeping (`b4e0b47`, `f60861d`, `03255d9`, `8d47550`):* Razorpay checkout theme colour corrected from a leftover `#FFC800` to `#A3E635` (hardcoded because the checkout iframe cannot read parent CSS custom properties); logo asset recropped 480×433 → 433×433 with the conflicting `rounded-[22.5%]` clip removed; CLAUDE.md's brand section reconciled from the stale DEC-057 amber description to the live DEC-065 Cyber Lime state, including retiring the DEC-056 pre-auth carve-out and the `@tsparticles/*` exception under DEC-066; `supabase/.temp/` gitignored.
+
+**Verification:**
+- `npx tsc -b` clean, `npx eslint src/` at exactly the 4-error pre-existing `react-refresh/only-export-components` baseline, and `npm run build` clean before **every** commit in this range. `impeccable` `detect.mjs` zero findings on every changed frontend file.
+- `dev-utilities` and `send-shared-payment-reminder` both redeployed to the live project. CORS preflight 204; a non-session JWT still reaches the function's own `UNAUTHORIZED` envelope, proving the module graph loads.
+- Live schema facts were read from PostgREST's OpenAPI definition rather than assumed, because Docker was unavailable for `supabase db dump`. That is how the `updated_at` default and the `dev_test` reminder type were confirmed.
+- CLAUDE.md's claims were checked against the code before committing: every colour present in `index.css`, no `sparkles.tsx`/`@tsparticles`/`SparklesCore` anywhere, and all four fonts genuinely loaded — three via Fontsource in `main.tsx`, Cabinet Grotesk via a Fontshare CDN link in `index.html` (no npm package exists for it), which is the one claim not verifiable from `package.json` alone.
+- **Not verified, and not claimed, for any item above:** rendered output and runtime behaviour. No browser or automation was available in this session. Every fix here was reviewed statically and needs the user's live re-check — specifically: `SubscriptionCard`'s hit-testing and keyboard activation, `send-shared-payment-reminder` on a payment request with *no* prior pending reminder (the only path that exercises the fix), Integration Status re-run to confirm "Reachable (send-only key)", Shared Payment Activity in **both** directions and at all three date cases (within 7 days / beyond / overdue), the allowlist redirect and 403 as a fourth non-allowlisted account, and Lighthouse re-run **at a mobile viewport** — a desktop pass would show green regardless and prove nothing.
+- The Phase 12 accessibility gate remains **open**: no axe or Lighthouse run was performed by Claude in this session, so no "zero Critical/Serious findings" statement has been made.
+
+**Commits:** `f3c3312`, `9a9d426`, `72e72b4`, `cd95c97`, `a56aae0`, `9933711`, `deba2c6`, `6a6e61e`, `b4e0b47`, `f60861d`, `03255d9`, `8d47550`
+
+---
+
 ## 2026-08-09 — Phase 11 (Developer/Test Utilities) + Phase 12 partial (E2E run sheet, accessibility)
 
 **Prompt:**
@@ -1816,3 +1857,29 @@ Implement Phase 2 (Authentication and Profile) for SubSense per 16_Implementatio
 **Commit logged:** `98312b6` — "Implement all four dev-utilities actions (Phase 11, Tasks 3/4/5/7)" (2026-08-09 12:28) — 5 files changed, 717 insertions(+), 7 deletions(-)
 
 **Commit logged:** `fab7de4` — "Wire the four dev-utility panels to the Edge Function (Phase 11)" (2026-08-09 12:30) — 4 files changed, 494 insertions(+), 8 deletions(-)
+
+**Commit logged:** `b3a38ad` — "Add BUILD_LOG.md entry for Phase 11 + Phase 12 partial" (2026-08-09 12:31) — 1 file changed, 50 insertions(+)
+
+**Commit logged:** `f3c3312` — "Remove nested interactive controls from SubscriptionCard (WCAG 4.1.2)" (2026-08-09 13:00) — 1 file changed, 34 insertions(+), 22 deletions(-)
+
+**Commit logged:** `9a9d426` — "Back-date updated_at when send-shared-payment-reminder creates a reminder" (2026-08-09 13:04) — 1 file changed, 16 insertions(+)
+
+**Commit logged:** `72e72b4` — "Restrict dev-utilities to a three-account allowlist" (2026-08-09 13:23) — 4 files changed, 105 insertions(+)
+
+**Commit logged:** `cd95c97` — "Stop reporting a send-only Resend key as auth_failed in the health check" (2026-08-09 13:50) — 2 files changed, 59 insertions(+), 5 deletions(-)
+
+**Commit logged:** `a56aae0` — "Wire Decision Workspace's Shared Payment Activity widget to real data" (2026-08-09 14:57) — 3 files changed, 253 insertions(+), 9 deletions(-)
+
+**Commit logged:** `9933711` — "Remove the Potential Savings placeholder from Decision Workspace" (2026-08-09 15:08) — 1 file changed, 7 insertions(+), 9 deletions(-)
+
+**Commit logged:** `deba2c6` — "Scope Shared Payment Activity to a 7-day window with due countdowns" (2026-08-09 15:12) — 2 files changed, 56 insertions(+), 2 deletions(-)
+
+**Commit logged:** `6a6e61e` — "Give the Add Subscription button an accessible name at mobile widths" (2026-08-09 15:27) — 1 file changed, 9 insertions(+)
+
+**Commit logged:** `b4e0b47` — "Fix Razorpay checkout theme color to match Cyber Lime brand (was leftover gold default)" (2026-08-09 19:20) — 1 file changed, 4 insertions(+), 1 deletion(-)
+
+**Commit logged:** `f60861d` — "Fix logo icon messy edges: crop asset to square, drop conflicting CSS rounding" (2026-08-09 19:48) — 2 files changed, 6 insertions(+), 5 deletions(-)
+
+**Commit logged:** `03255d9` — "Update CLAUDE.md brand/pre-auth sections to match live Cyber Lime state (DEC-065/DEC-066)" (2026-08-09 19:52) — 1 file changed, 23 insertions(+), 23 deletions(-)
+
+**Commit logged:** `8d47550` — "Ignore supabase/.temp/ (Supabase CLI local state)" (2026-08-09 19:54) — 1 file changed, 6 insertions(+), 1 deletion(-)
