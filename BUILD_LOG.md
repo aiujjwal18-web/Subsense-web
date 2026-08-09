@@ -28,6 +28,40 @@ Two things keep this current automatically:
 
 ---
 
+## 2026-08-09 — Phase 11 (Developer/Test Utilities) + Phase 12 partial (E2E run sheet, accessibility)
+
+**Prompt:**
+Plan Phase 11 (5 developer/test utilities) and Phase 12 (E2E run, RLS spot-check, accessibility) together, plan-only first, using `superpowers` planning discipline; stop at the plan and wait for go-ahead. After approval, build the commit sequence one logical change per commit, `tsc -b`/`eslint src/`/`npm run build` clean before each, and stop and flag anything not covered by the plan rather than improvising past it. Four open forks were resolved by the user before building: consolidate into one `dev-utilities` Edge Function; do NOT touch the live `ai-generate-insight`/`insights-generate-summary` functions (rebuild prompt context inside `dev-utilities` instead, accepting drift risk for zero regression risk before the showcase); put the E2E run sheet at `docs/qa/e2e-run-sheet.md`; accept manual-only verification with no vitest setup. One addition to Task 10: explicitly confirm whether zero Critical/Serious WCAG 2.1 AA findings remain on the four named screens, since that is doc 14's actual gate.
+
+**Skills invoked:**
+- `superpowers` (`writing-plans`) for the planning pass — file structure and task decomposition before any code, and the plan file itself as the reviewable artifact.
+- `impeccable` (`polish` lens, Operate mode) before writing any JSX for the new utilities page, per CLAUDE.md's mandatory rule for a new visual surface. Absolute-bans check and AI-slop test run on the layout before implementation, not after.
+- `impeccable` (`audit` lens) for Task 10's accessibility pass.
+- **TDD gap flagged, not silently skipped:** this repo still has no test runner, so `superpowers`' Iron Law could not be followed literally. The user explicitly accepted manual-only verification for this phase, consistent with every prior phase.
+
+**What was done:**
+- `src/features/dev-utilities/DevUtilitiesPage.tsx` — new hidden `/dev-utilities` route registered inside `App.tsx`'s existing `ProtectedRoute` layout route, deliberately absent from `Sidebar`'s `NAV_ITEMS`. Five sections separated by rules rather than wrapped in cards, each stating its real-world consequence (sends real email / free in dry run / no side effects / moves Test Mode money / read-only) so the cost of clicking is legible beforehand.
+- `supabase/functions/dev-utilities/` — one new Edge Function with a four-action discriminator (`trigger_reminder`, `build_prompt`, `render_email`, `integration_status`), each in its own module. Auth via `requireAuthenticatedUser`; every action scopes its work to the caller's own `userId`, because a hidden route is not an access control. New `DEV_*` error family.
+- `RazorpayTestPanel` reuses the existing `UpgradeButton` unchanged — no duplicated payment logic; `plan_code` is read from `premium_plans` rather than hardcoded.
+- `docs/qa/e2e-run-sheet.md` — 47-step manual run sheet, ordered so the idle-timeout step runs last (it ends the session).
+- Accessibility fixes on the four audited screens: skip link (2.4.1), labelled catalog search (3.3.2/4.1.2), `role="status"`/`role="alert"` on all loading/error/result regions (4.1.3), named `<nav>` landmark, and a real focus ring on `SubscriptionCard` (2.4.7).
+
+**Findings worth carrying forward:**
+- **Latent bug confirmed in `send-shared-payment-reminder`.** `reminders.updated_at` defaults to `now()` with no trigger override (verified against the live schema via PostgREST's OpenAPI definition, since Docker was unavailable for `db dump`). `send-reminder-email`'s claim query requires `updated_at <= now() - 10 minutes` as a concurrency lease, so a freshly inserted row can never be claimed by the function it was created for. `send-shared-payment-reminder`'s find-or-create path does not back-date, so its create-new branch hands over an unclaimable row and returns 404; it only works when the "find" branch locates a pre-existing row older than the lease. Not fixed here — reported for its own decision and commit.
+- `reminder_type` already contains a `dev_test` value with an active `reminder_dev_test` template, purpose-built for exactly this utility. Used as the default rather than synthesising a fake production-type reminder.
+- Two plan assumptions were wrong and are corrected in the Task 10 commit: `SubscriptionCard` does not appear on any of the four audited screens (only Subscriptions List), and lucide-react already applies `aria-hidden="true"` to childless icons, so the decorative-icon concern did not exist.
+
+**Verification:**
+- `npx tsc -b` clean, `npx eslint src/` at exactly the 4-error pre-existing `react-refresh/only-export-components` baseline, and `npm run build` clean before every commit.
+- `impeccable` `detect.mjs` returns zero findings on every changed frontend file.
+- `dev-utilities` deployed to the live project. CORS preflight returns 204; a request with no auth header is rejected by the platform gateway; a request bearing a non-session JWT reaches this function's own `requireAuthenticatedUser` and returns its own `UNAUTHORIZED` envelope — which proves the entire module graph loads, since a syntax or import error would surface as a worker boot failure instead.
+- **Not verified, and explicitly not claimed:** (a) every rendered surface — no browser automation was available this session, so nothing about how any of this looks or behaves in the page is asserted; (b) the four actions' actual behaviour, which needs a real user session JWT this environment cannot mint without creating a user in the live auth table; (c) **the accessibility gate** — the plan called for an axe DevTools or Lighthouse pass and no browser was available, so no "zero Critical/Serious findings" statement is being made. The fixes address findings from a static source audit only.
+- Task 9 (RLS spot-check) not started: it needs two real accounts and a browser console.
+
+**Commits:** `06b2c80`, `6404a9a`, `16c6d21`, `9159fc9`, `29fd225`, `98312b6`, `fab7de4`
+
+---
+
 ## 2026-08-07 — Idle-timeout threshold retune for demo week + duration-copy fix
 
 **Prompt:**
@@ -1766,3 +1800,19 @@ Implement Phase 2 (Authentication and Profile) for SubSense per 16_Implementatio
 **Commit logged:** `d2d83ab` — "Add BUILD_LOG.md entry for idle-session timeout" (2026-08-07 18:14) — 1 file changed, 39 insertions(+)
 
 **Commit logged:** `44053bb` — "Retune idle-timeout thresholds for demo week and fix duration copy" (2026-08-07 19:07) — 1 file changed, 30 insertions(+), 13 deletions(-)
+
+**Commit logged:** `2926411` — "Add BUILD_LOG.md entry for idle-timeout threshold retune" (2026-08-07 19:07) — 1 file changed, 27 insertions(+)
+
+**Commit logged:** `06b2c80` — "Add hidden developer utilities route and page shell (Phase 11, Task 1)" (2026-08-09 10:24) — 2 files changed, 121 insertions(+)
+
+**Commit logged:** `6404a9a` — "Add dev-utilities Edge Function skeleton (Phase 11, Task 2)" (2026-08-09 10:34) — 1 file changed, 77 insertions(+)
+
+**Commit logged:** `16c6d21` — "Wire Test Razorpay Payment utility (Phase 11, Task 6)" (2026-08-09 11:13) — 2 files changed, 101 insertions(+), 1 deletion(-)
+
+**Commit logged:** `9159fc9` — "Add E2E run sheet for the full user journey (Phase 12, Task 8)" (2026-08-09 11:20) — 1 file changed, 163 insertions(+)
+
+**Commit logged:** `29fd225` — "Fix accessibility findings on the four audited screens (Phase 12, Task 10)" (2026-08-09 11:25) — 7 files changed, 73 insertions(+), 25 deletions(-)
+
+**Commit logged:** `98312b6` — "Implement all four dev-utilities actions (Phase 11, Tasks 3/4/5/7)" (2026-08-09 12:28) — 5 files changed, 717 insertions(+), 7 deletions(-)
+
+**Commit logged:** `fab7de4` — "Wire the four dev-utility panels to the Edge Function (Phase 11)" (2026-08-09 12:30) — 4 files changed, 494 insertions(+), 8 deletions(-)
