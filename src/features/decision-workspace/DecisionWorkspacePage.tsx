@@ -11,6 +11,7 @@ import { AiDecisionCard } from "@/features/ai-insights/AiDecisionCard"
 import { useWorkspaceAiInsights } from "@/features/ai-insights/useWorkspaceAiInsights"
 import { useAuth } from "@/features/auth/AuthContext"
 import { isPremiumActive } from "@/features/premium/premium-utils"
+import { SharedPaymentActivity } from "./SharedPaymentActivity"
 import { staggerItemMotion } from "@/lib/motion"
 import { supabase } from "@/lib/supabase"
 import {
@@ -283,15 +284,11 @@ export function DecisionWorkspacePage() {
           )}
         </section>
 
-        {/* Shared Payment Activity */}
-        <section className="mt-6 rounded-lg border border-border bg-card p-6">
-          <h2 className="font-heading text-sm font-semibold text-foreground">
-            Shared Payment Activity
-          </h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            No shared payment activity yet.
-          </p>
-        </section>
+        {/* Shared Payment Activity — see SharedPaymentActivity.tsx. Until now this
+            section was a hardcoded empty state with no query behind it, so a member with
+            a real pending request was shown "no activity" that could never have been
+            anything else. */}
+        <SharedPaymentActivity />
 
         {/* Potential Savings */}
         <section className="mt-6 rounded-lg border border-border bg-card p-6">
