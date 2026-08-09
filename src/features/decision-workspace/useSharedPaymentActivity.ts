@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react"
 
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/features/auth/AuthContext"
+import { daysUntil } from "@/features/subscriptions/subscription-utils"
 import {
   PAYMENT_REQUEST_SELECT_COLUMNS,
   SHARED_SUBSCRIPTION_SELECT_COLUMNS,
@@ -26,6 +27,26 @@ export interface SharedPaymentActivityItem {
   billingCycleDate: string
   direction: PaymentDirection
   counterpartyName: string
+  daysUntilDue: number
+  dueLabel: string
+}
+
+// Matches Upcoming Renewals' cutoff on this same page, which filters
+// computeRenewalUrgency(...) !== "normal" — i.e. 7 days or fewer, INCLUDING overdue.
+// Overdue is deliberately kept rather than treated as "outside the window": money already
+// late is the most actionable thing this widget can show, and dropping it would both
+// hide real debt and diverge from the sibling list directly above it.
+const WINDOW_DAYS = 7
+
+// "Due"/"Overdue by" mirrors formatRenewalLabel's shape and its singular/plural handling,
+// so the countdown reads the same as the renewal rows beside it.
+function formatDueLabel(days: number): string {
+  if (days < 0) {
+    const late = Math.abs(days)
+    return `Overdue by ${late} day${late === 1 ? "" : "s"}`
+  }
+  if (days === 0) return "Due today"
+  return `Due in ${days} day${days === 1 ? "" : "s"}`
 }
 
 interface SharedSubscriptionWithSubscription extends SharedSubscriptionRow {
@@ -132,6 +153,18 @@ export function useSharedPaymentActivity() {
         // reported symptom.
         const isMine = request.shared_members?.user_id != null && request.shared_members.user_id === appUser!.id
 
+        // billing_cycle_date is the due date: payment_requests carries no separate
+        // due_date column, and this is the date the member owes for that cycle. Filtered
+        // client-side with daysUntil rather than as a .lte() in the query, so the same
+        // date-only parsing the renewal rows use applies here too — a raw timestamp
+        // comparison would drift by a day either side of midnight depending on timezone.
+        //
+        // Layered ON TOP of the owner-or-member RLS scope, not replacing it: this only
+        // narrows what Decision Workspace surfaces. /shared still lists every request
+        // regardless of date and is untouched.
+        const days = daysUntil(request.billing_cycle_date)
+        if (days > WINDOW_DAYS) continue
+
         mapped.push({
           id: request.id,
           subscriptionName,
@@ -142,13 +175,19 @@ export function useSharedPaymentActivity() {
           direction: isMine ? "i_owe" : "owed_to_me",
           counterpartyName:
             request.shared_members?.display_name ?? request.shared_members?.email ?? "A member",
+          daysUntilDue: days,
+          dueLabel: formatDueLabel(days),
         })
       }
 
       // Money the viewer owes first: it is the only half they can act on themselves.
+      // Then soonest-due first — ascending, matching Upcoming Renewals' own sort, so the
+      // most urgent row is at the top rather than the most recent. (Before the 7-day
+      // window this sorted newest-first, which made sense for an unbounded history and
+      // does not for an actionable shortlist.)
       mapped.sort((a, b) => {
         if (a.direction !== b.direction) return a.direction === "i_owe" ? -1 : 1
-        return b.billingCycleDate.localeCompare(a.billingCycleDate)
+        return a.daysUntilDue - b.daysUntilDue
       })
 
       setItems(mapped)

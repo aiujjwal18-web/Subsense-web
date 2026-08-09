@@ -45,8 +45,13 @@ export function SharedPaymentActivity() {
         </p>
       )}
 
+      {/* Specific about the window rather than the old generic "no activity yet": a user
+          with a real request due in three weeks would otherwise read this as "you owe
+          nothing", which is false. This says only that nothing is due soon. */}
       {state === "ready" && items.length === 0 && (
-        <p className="mt-2 text-sm text-muted-foreground">No shared payment activity yet.</p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Nothing owed in the next 7 days.
+        </p>
       )}
 
       {state === "ready" && items.length > 0 && (
@@ -66,6 +71,16 @@ export function SharedPaymentActivity() {
                 <p className="text-xs text-muted-foreground">
                   {item.direction === "i_owe" ? "to" : "from"} {item.counterpartyName} ·{" "}
                   {formatCycleDate(item.billingCycleDate)}
+                </p>
+                {/* Countdown carries its own words ("Overdue by 2 days"), so urgency is
+                    never signalled by colour alone. Destructive tint only reinforces the
+                    already-late case, matching how the renewal rows treat overdue. */}
+                <p
+                  className={`mt-0.5 text-xs ${
+                    item.daysUntilDue < 0 ? "text-destructive" : "text-muted-foreground"
+                  }`}
+                >
+                  {item.dueLabel}
                 </p>
               </div>
               <div className="shrink-0 text-right">
