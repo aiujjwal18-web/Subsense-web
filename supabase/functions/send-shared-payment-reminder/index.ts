@@ -79,6 +79,21 @@ Deno.serve(async (req) => {
       timezone = profile?.timezone ?? timezone
     }
 
+    // updated_at is back-dated past send-reminder-email's 10-minute claim lease.
+    //
+    // Without this, the create-new path could never work: reminders.updated_at defaults
+    // to now() with no trigger override, while send-reminder-email's claim query
+    // requires `updated_at <= now() - 10 minutes`. A row inserted here would therefore
+    // fail to match the claim of the very function it is about to be handed to, and
+    // single mode would return 404 NOT_FOUND. The bug was invisible because the
+    // find-existing branch above usually supplies a row already older than the lease --
+    // only a genuinely first-ever reminder for a payment request took this path.
+    //
+    // 15 minutes, not exactly 10, so clock skew between this function and Postgres
+    // cannot push the row back inside the window. Same value and reasoning as
+    // dev-utilities/trigger-reminder.ts.
+    const LEASE_BACKDATE_MINUTES = 15
+
     const { data: inserted, error: insertError } = await supabaseAdmin
       .from("reminders")
       .insert({
@@ -87,6 +102,7 @@ Deno.serve(async (req) => {
         reminder_type: "shared_payment",
         scheduled_for: new Date().toISOString(),
         timezone_snapshot: timezone,
+        updated_at: new Date(Date.now() - LEASE_BACKDATE_MINUTES * 60_000).toISOString(),
       })
       .select("id")
       .single()
