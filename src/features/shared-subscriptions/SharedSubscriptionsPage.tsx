@@ -27,12 +27,14 @@ export function SharedSubscriptionsPage() {
           Subscriptions you share, and what everyone owes.
         </p>
 
+        {/* Announced: this region swaps between loading, error and content with no
+            focus change, so a screen-reader user otherwise gets silence (WCAG 4.1.3). */}
         {state === "loading" && (
-          <p className="mt-6 text-sm text-muted-foreground">Loading…</p>
+          <p role="status" className="mt-6 text-sm text-muted-foreground">Loading…</p>
         )}
 
         {state === "error" && (
-          <p className="mt-6 text-sm text-muted-foreground">Couldn't load your shared subscriptions. Please try again.</p>
+          <p role="alert" className="mt-6 text-sm text-muted-foreground">Couldn't load your shared subscriptions. Please try again.</p>
         )}
 
         {state === "ready" && items.length === 0 && (

@@ -72,7 +72,10 @@ export function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
-        <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
+        {/* Named so a screen reader announces "Main navigation" rather than an
+            anonymous "navigation" landmark — the app has more than one navigable
+            region (TopBar's logo/actions), so the distinction is real. */}
+        <nav aria-label="Main" className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
           {NAV_ITEMS.map(({ label, to, icon: Icon, end }) => (
             <NavLink
               key={to}

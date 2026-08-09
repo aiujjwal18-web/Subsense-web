@@ -151,7 +151,10 @@ export function SubscriptionCard({
         }
       }}
       className={cn(
-        "relative flex cursor-pointer flex-col gap-4 rounded-lg border border-border bg-card/70 p-5 backdrop-blur-md outline-none transition-colors duration-[120ms] ease-out hover:border-primary focus-visible:border-primary",
+        // focus-visible ring, not border-colour alone: a 1px border tint is too weak to
+        // read as a focus indicator (WCAG 2.4.7), and every <Button> in the app already
+        // uses this exact ring treatment (see button.tsx) — the card was the outlier.
+        "relative flex cursor-pointer flex-col gap-4 rounded-lg border border-border bg-card/70 p-5 backdrop-blur-md outline-none transition-colors duration-[120ms] ease-out hover:border-primary focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
         className
       )}
     >

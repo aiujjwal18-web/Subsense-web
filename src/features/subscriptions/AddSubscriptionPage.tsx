@@ -206,18 +206,36 @@ export function AddSubscriptionPage() {
                   </Button>
                 </div>
               ) : (
-                <div className="relative">
-                  <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    value={query}
-                    onChange={(event) => {
-                      const value = event.target.value
-                      setQuery(value)
-                      if (value.trim()) setSearching(true)
-                    }}
-                    placeholder="Search subscriptions (e.g. Netflix)"
-                    className="pl-8"
-                  />
+                <div>
+                  {/* Visible label rather than aria-label: every other field on this page
+                      already has one (Name, Cost, Currency, …), and a placeholder is not
+                      a label — it disappears on input and is not reliably announced
+                      (WCAG 3.3.2 / 4.1.2). */}
+                  <Label htmlFor="catalog-search">Search the catalog</Label>
+                  <div className="relative mt-1.5">
+                    <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      id="catalog-search"
+                      type="search"
+                      value={query}
+                      onChange={(event) => {
+                        const value = event.target.value
+                        setQuery(value)
+                        if (value.trim()) setSearching(true)
+                      }}
+                      placeholder="e.g. Netflix"
+                      className="pl-8"
+                    />
+                  </div>
+                  {/* Results arrive asynchronously with no focus change, so without a live
+                      region a screen-reader user gets silence (WCAG 4.1.3). */}
+                  <p className="sr-only" role="status">
+                    {searching
+                      ? "Searching the catalog."
+                      : query.trim()
+                        ? `${results.length} ${results.length === 1 ? "result" : "results"} found.`
+                        : ""}
+                  </p>
                   {searching && (
                     <p className="mt-2 text-xs text-muted-foreground">Searching…</p>
                   )}
@@ -388,8 +406,10 @@ export function AddSubscriptionPage() {
             </div>
           )}
 
+          {/* role="alert" so a validation failure is announced: submitting does not move
+              focus, so without it the error is silent to a screen reader (WCAG 4.1.3). */}
           {formError && (
-            <p className="mt-4 text-sm text-destructive">{formError}</p>
+            <p role="alert" className="mt-4 text-sm text-destructive">{formError}</p>
           )}
 
           <div className="mt-6 flex justify-end gap-2">

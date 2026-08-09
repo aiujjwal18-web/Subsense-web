@@ -260,7 +260,9 @@ function SubscriptionDetailsContent({ id }: { id: string }) {
     return (
       <div className="px-6 py-12">
         <div className="mx-auto max-w-2xl rounded-lg border border-border bg-card p-6">
-          <p className="text-sm text-muted-foreground">
+          {/* Announced: the page swaps from loading straight to this with no focus
+              change, so it is otherwise silent to a screen reader (WCAG 4.1.3). */}
+          <p role="alert" className="text-sm text-muted-foreground">
             {loadState === "notFound"
               ? "This subscription doesn't exist or you don't have access to it."
               : "Couldn't load this subscription. Please try again."}
@@ -477,7 +479,7 @@ function SubscriptionDetailsContent({ id }: { id: string }) {
                 />
               </div>
 
-              {formError && <p className="text-sm text-destructive sm:col-span-2">{formError}</p>}
+              {formError && <p role="alert" className="text-sm text-destructive sm:col-span-2">{formError}</p>}
 
               <div className="flex justify-end gap-2 sm:col-span-2">
                 <Button
@@ -525,7 +527,7 @@ function SubscriptionDetailsContent({ id }: { id: string }) {
                     deleted.
                   </DialogDescription>
                 </DialogHeader>
-                {formError && <p className="text-sm text-destructive">{formError}</p>}
+                {formError && <p role="alert" className="text-sm text-destructive">{formError}</p>}
                 <DialogFooter>
                   <DialogClose render={<Button type="button" variant="outline" />}>Cancel</DialogClose>
                   <Button type="button" variant="destructive" onClick={handleArchive} disabled={archiving}>
@@ -586,11 +588,11 @@ function SubscriptionDetailsContent({ id }: { id: string }) {
           </div>
 
           {sharedSub.state === "loading" && (
-            <p className="mt-2 text-sm text-muted-foreground">Loading…</p>
+            <p role="status" className="mt-2 text-sm text-muted-foreground">Loading…</p>
           )}
 
           {sharedSub.state === "error" && (
-            <p className="mt-2 text-sm text-muted-foreground">Couldn't load sharing details. Please try again.</p>
+            <p role="alert" className="mt-2 text-sm text-muted-foreground">Couldn't load sharing details. Please try again.</p>
           )}
 
           {sharedSub.state === "notShared" && (

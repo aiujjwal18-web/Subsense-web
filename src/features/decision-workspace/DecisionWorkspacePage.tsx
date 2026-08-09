@@ -103,7 +103,11 @@ export function DecisionWorkspacePage() {
     return (
       <div className="px-6 py-12">
         <div className="mx-auto max-w-3xl">
-          <p className="text-sm text-muted-foreground">Loading your decision workspace…</p>
+          {/* Announced: the page swaps from loading to content with no focus change,
+              so a screen-reader user otherwise hears nothing either way (WCAG 4.1.3). */}
+          <p role="status" className="text-sm text-muted-foreground">
+            Loading your decision workspace…
+          </p>
         </div>
       </div>
     )
@@ -113,7 +117,7 @@ export function DecisionWorkspacePage() {
     return (
       <div className="px-6 py-12">
         <div className="mx-auto max-w-3xl rounded-lg border border-border bg-card p-6">
-          <p className="text-sm text-muted-foreground">
+          <p role="alert" className="text-sm text-muted-foreground">
             Couldn't load your decision workspace. Please try refreshing the page.
           </p>
         </div>
