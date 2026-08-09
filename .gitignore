@@ -28,3 +28,8 @@ dist-ssr
 .claude/
 .cursor/skills/
 **/__pycache__/
+
+# Supabase CLI local state, written by `supabase link` — machine-specific
+# (project ref, pooler URL, remote version pins) and regenerated on demand.
+# supabase/config.toml is the shared, tracked config; this directory is not.
+supabase/.temp/
