@@ -86,7 +86,10 @@ export function UpgradeButton({ planCode }: UpgradeButtonProps) {
             setIsProcessing(false)
           },
         },
-        theme: { color: "#FFC800" },
+        // Razorpay's checkout iframe can't read our CSS custom properties, so this
+        // mirrors --primary's Cyber Lime hex directly (05_Design_System) rather than
+        // the SDK's default gold. Update this if --primary's value ever changes.
+        theme: { color: "#A3E635" },
       })
       // Razorpay renders checkout as a third-party iframe overlay, which emits no
       // activity events on our own document — without this the idle timer would see
