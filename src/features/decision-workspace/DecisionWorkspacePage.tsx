@@ -290,15 +290,13 @@ export function DecisionWorkspacePage() {
             anything else. */}
         <SharedPaymentActivity />
 
-        {/* Potential Savings */}
-        <section className="mt-6 rounded-lg border border-border bg-card p-6">
-          <h2 className="font-heading text-sm font-semibold text-foreground">
-            Potential Savings
-          </h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Potential savings insights will appear here.
-          </p>
-        </section>
+        {/* "Potential Savings" was rendered here as an empty placeholder card until it
+            was removed for demo readiness. It is deferred scope, not a deleted feature
+            (doc 16 v1.23, doc 06 C-007) — nothing was built behind it, so nothing was
+            lost. When it is built, the deterministic cost-comparison engine already
+            powering Insights' "Worth a Second Look" (findCostComparisons in
+            supabase/functions/insights-generate-summary) is the intended source rather
+            than a new calculation. */}
       </div>
     </div>
   )
