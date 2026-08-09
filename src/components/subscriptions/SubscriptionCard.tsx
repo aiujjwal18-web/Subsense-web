@@ -139,22 +139,15 @@ export function SubscriptionCard({
   }
 
   return (
+    // Plain container, deliberately NOT role="button" + tabIndex. It contains real
+    // buttons (Paid/Paused/Resume) and a dialog, and nested interactive controls inside
+    // an interactive ancestor are invalid — a screen reader announces one button
+    // containing others, and the activation target is ambiguous (WCAG 4.1.2). The
+    // whole-card click target is preserved by the stretched overlay on the title button
+    // below instead, which gives exactly one unambiguous "open" control.
     <div
-      role="button"
-      tabIndex={0}
-      aria-label={`Open details for ${name}`}
-      onClick={handleActivate}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault()
-          handleActivate()
-        }
-      }}
       className={cn(
-        // focus-visible ring, not border-colour alone: a 1px border tint is too weak to
-        // read as a focus indicator (WCAG 2.4.7), and every <Button> in the app already
-        // uses this exact ring treatment (see button.tsx) — the card was the outlier.
-        "relative flex cursor-pointer flex-col gap-4 rounded-lg border border-border bg-card/70 p-5 backdrop-blur-md outline-none transition-colors duration-[120ms] ease-out hover:border-primary focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
+        "relative flex cursor-pointer flex-col gap-4 rounded-lg border border-border bg-card/70 p-5 backdrop-blur-md transition-colors duration-[120ms] ease-out hover:border-primary",
         className
       )}
     >
@@ -167,9 +160,27 @@ export function SubscriptionCard({
         <div className="flex min-w-0 items-center gap-3">
           <CategoryIcon category={category} />
           <div className="min-w-0">
-            <p className="truncate font-heading text-sm font-medium text-foreground">
-              {name}
-            </p>
+            {/* The card's single "open" control. Its ::after is stretched over the whole
+                card (absolute inset-0 resolves against the card, which is the nearest
+                positioned ancestor — so this button must NOT be position:relative), which
+                keeps the familiar click-anywhere-on-the-card behaviour while leaving
+                exactly one focusable activation target.
+                `truncate` lives on the inner span, not here: it implies overflow-hidden,
+                which would clip the stretched ::after down to the text box.
+                The focus ring is drawn on that same ::after so focusing the title still
+                outlines the entire card, preserving the indicator added in Task 10.
+                aria-label repeats the visible name, so it satisfies Label in Name
+                (WCAG 2.5.3) rather than replacing the accessible name with unrelated text. */}
+            <button
+              type="button"
+              onClick={handleActivate}
+              aria-label={`Open details for ${name}`}
+              className="block max-w-full text-left outline-none after:absolute after:inset-0 after:rounded-lg after:content-[''] focus-visible:after:ring-3 focus-visible:after:ring-ring/50"
+            >
+              <span className="block truncate font-heading text-sm font-medium text-foreground">
+                {name}
+              </span>
+            </button>
             <p className="text-xs text-muted-foreground">
               {BILLING_FREQUENCY_LABEL[billingFrequency]}
             </p>
@@ -200,11 +211,12 @@ export function SubscriptionCard({
       </div>
 
       {lifecycleStatus !== "archived" && (
-        <div
-          className="flex items-center gap-2"
-          onClick={(event) => event.stopPropagation()}
-          onKeyDown={(event) => event.stopPropagation()}
-        >
+        // relative z-10 lifts the action row above the title button's stretched ::after,
+        // so these buttons receive their own clicks. This replaces the previous
+        // stopPropagation handlers, which were a mouse-only workaround for the card's
+        // own click handler and did nothing for keyboard users. Behaviour is otherwise
+        // identical: empty space within this row still does not open the card.
+        <div className="relative z-10 flex items-center gap-2">
           {lifecycleStatus === "paused" ? (
             <Button
               type="button"
