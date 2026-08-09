@@ -50,11 +50,20 @@ export function TopBarActions() {
       >
         <Search />
       </Button>
+      {/* aria-label is required, not belt-and-braces: the text below is `hidden
+          sm:inline`, so under 640px it is display:none and therefore absent from the
+          accessibility tree entirely. The only remaining child is the Plus icon, which
+          lucide-react renders aria-hidden — leaving the button with NO accessible name
+          at mobile widths (WCAG 4.1.2). Lighthouse audits at a mobile viewport by
+          default, which is why it caught this and a desktop-width inspection would not.
+          The label string matches the visible text exactly so that when the text IS
+          shown, the accessible name still contains it (WCAG 2.5.3 Label in Name). */}
       <Button
         type="button"
         variant="gradient"
         size="sm"
         onClick={() => navigate("/subscriptions/add")}
+        aria-label="Add Subscription"
         className="gap-1.5"
       >
         <Plus />
