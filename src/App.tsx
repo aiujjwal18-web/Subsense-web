@@ -8,6 +8,7 @@ import { ForgotPasswordPage } from "@/features/auth/ForgotPasswordPage"
 import { ProtectedRoute } from "@/features/auth/ProtectedRoute"
 import { ResetPasswordPage } from "@/features/auth/ResetPasswordPage"
 import { DecisionWorkspacePage } from "@/features/decision-workspace/DecisionWorkspacePage"
+import { DevUtilitiesPage } from "@/features/dev-utilities/DevUtilitiesPage"
 import { InsightsPage } from "@/features/insights/InsightsPage"
 import { ProfilePage } from "@/features/profile/ProfilePage"
 import { SharedSubscriptionsPage } from "@/features/shared-subscriptions/SharedSubscriptionsPage"
@@ -37,6 +38,10 @@ function App() {
             <Route path="/shared" element={<SharedSubscriptionsPage />} />
             <Route path="/insights" element={<InsightsPage />} />
             <Route path="/profile" element={<ProfilePage />} />
+            {/* Phase 11 developer utilities. Deliberately absent from Sidebar's
+                NAV_ITEMS — reachable only by typing the path. Sits inside this
+                layout route so ProtectedRoute already gates it. */}
+            <Route path="/dev-utilities" element={<DevUtilitiesPage />} />
           </Route>
         </Routes>
         <Toaster />
