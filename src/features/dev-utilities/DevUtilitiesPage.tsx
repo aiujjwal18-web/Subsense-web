@@ -1,5 +1,8 @@
 import type { ReactNode } from "react"
+import { Navigate } from "react-router-dom"
 
+import { useAuth } from "@/features/auth/AuthContext"
+import { isDevUtilitiesAllowed } from "./dev-allowlist"
 import {
   IntegrationStatusPanel,
   SendReminderPanel,
@@ -57,6 +60,24 @@ function UtilitySection({
 }
 
 export function DevUtilitiesPage() {
+  const { session } = useAuth()
+
+  // Read from the session rather than appUser: ProtectedRoute guarantees a session
+  // exists before this component ever renders, so the address is available on the
+  // FIRST render pass. appUser is loaded by a separate query and can still be null for
+  // a tick, which would flash the panels before the redirect landed.
+  //
+  // This gate is inside the page component rather than wrapped around its <Route> so it
+  // travels with the component — a second route pointing here later cannot forget it.
+  //
+  // Presentation only. The real boundary is the identical check inside the dev-utilities
+  // Edge Function: a valid session JWT can POST to that URL directly without ever
+  // loading this page, so removing the server check would leave the endpoint open no
+  // matter what this returns.
+  if (!isDevUtilitiesAllowed(session?.user?.email)) {
+    return <Navigate to="/" replace />
+  }
+
   return (
     <div className="px-6 py-12">
       <div className="mx-auto max-w-3xl">

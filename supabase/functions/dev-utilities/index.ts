@@ -1,6 +1,7 @@
 import { createSupabaseAdminClient } from "../_shared/supabase-admin.ts"
 import { requireAuthenticatedUser } from "../_shared/require-user.ts"
 import { errorResponse, handleCorsPreflight } from "../_shared/http.ts"
+import { isDevUtilitiesAllowed } from "./allowlist.ts"
 import { handleBuildPrompt } from "./build-prompt.ts"
 import { handleIntegrationStatus } from "./integration-status.ts"
 import { handleRenderEmail } from "./render-email.ts"
@@ -34,6 +35,7 @@ import { handleTriggerReminder } from "./trigger-reminder.ts"
 //   DEV_003  action recognised but not implemented yet
 //   DEV_004  downstream failure (delegated function, provider, or DB write)
 //   DEV_005  server misconfiguration (missing env)
+//   DEV_006  authenticated, but not on the developer allowlist
 
 const ACTIONS = ["trigger_reminder", "build_prompt", "render_email", "integration_status"] as const
 
@@ -54,6 +56,30 @@ Deno.serve(async (req) => {
   const authResult = await requireAuthenticatedUser(req, supabaseAdmin)
   if (authResult instanceof Response) return authResult
   const { userId } = authResult
+
+  // Authorization gate — THE real boundary for this whole surface. The /dev-utilities
+  // route is hidden and client-side guarded, but neither stops anyone holding a valid
+  // session JWT from POSTing here directly. Being signed in is not sufficient; being one
+  // of three named people is.
+  //
+  // The email is read from the users table rather than from requireAuthenticatedUser,
+  // which returns only userId. Widening that shared helper would touch five other
+  // functions (ai-generate-insight, insights-generate-summary, both razorpay functions,
+  // send-shared-payment-reminder) for a dev-only need — one extra query on a dev
+  // endpoint is the cheaper trade. It is also read server-side from the DB, never taken
+  // from the request body, so a caller cannot assert someone else's address.
+  const { data: callerRow } = await supabaseAdmin
+    .from("users")
+    .select("email")
+    .eq("id", userId)
+    .maybeSingle()
+
+  if (!isDevUtilitiesAllowed(callerRow?.email as string | undefined)) {
+    // 403, not 404: the caller is authenticated and this endpoint's existence is already
+    // evident from the client bundle, so pretending it is absent buys nothing and makes
+    // a legitimate operator's misconfiguration harder to diagnose.
+    return errorResponse(403, "DEV_006", "This account is not authorized to use developer utilities.")
+  }
 
   let requestBody: { action?: unknown } = {}
   try {
