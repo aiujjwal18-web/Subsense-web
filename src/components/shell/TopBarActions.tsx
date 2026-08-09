@@ -1,4 +1,4 @@
-import { Bell, LogOut, Plus, Search } from "lucide-react"
+import { LogOut, Plus } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -41,15 +41,6 @@ export function TopBarActions() {
 
   return (
     <div className="fixed top-4 right-4 z-50 flex items-center gap-1">
-      <Button
-        type="button"
-        variant="secondary"
-        size="icon"
-        disabled
-        aria-label="Search (coming soon)"
-      >
-        <Search />
-      </Button>
       {/* aria-label is required, not belt-and-braces: the text below is `hidden
           sm:inline`, so under 640px it is display:none and therefore absent from the
           accessibility tree entirely. The only remaining child is the Plus icon, which
@@ -68,15 +59,6 @@ export function TopBarActions() {
       >
         <Plus />
         <span className="hidden sm:inline">Add Subscription</span>
-      </Button>
-      <Button
-        type="button"
-        variant="secondary"
-        size="icon"
-        disabled
-        aria-label="Notifications (coming soon)"
-      >
-        <Bell />
       </Button>
 
       <DropdownMenu>
