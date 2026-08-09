@@ -1883,3 +1883,7 @@ Implement Phase 2 (Authentication and Profile) for SubSense per 16_Implementatio
 **Commit logged:** `03255d9` — "Update CLAUDE.md brand/pre-auth sections to match live Cyber Lime state (DEC-065/DEC-066)" (2026-08-09 19:52) — 1 file changed, 23 insertions(+), 23 deletions(-)
 
 **Commit logged:** `8d47550` — "Ignore supabase/.temp/ (Supabase CLI local state)" (2026-08-09 19:54) — 1 file changed, 6 insertions(+), 1 deletion(-)
+
+**Commit logged:** `052aa78` — "Add BUILD_LOG.md entry for post-Phase-11 fixes and doc reconciliation" (2026-08-09 19:57) — 1 file changed, 67 insertions(+)
+
+**Commit logged:** `a71e93e` — "Remove the disabled Search and Notifications buttons from TopBarActions" (2026-08-09 20:09) — 1 file changed, 1 insertion(+), 19 deletions(-)

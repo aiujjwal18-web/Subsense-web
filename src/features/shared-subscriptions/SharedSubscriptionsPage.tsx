@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { Link } from "react-router-dom"
 
 import { Badge } from "@/components/ui/badge"
@@ -18,6 +19,9 @@ import { SPLIT_METHOD_LABEL, getMemberDisplayName } from "@/features/shared-subs
 export function SharedSubscriptionsPage() {
   const { appUser } = useAuth()
   const { state, items, mutating, ownerMarkPaid, reportPaid, sendReminder } = useSharedSubscriptionsList()
+  // Per-card view mode, keyed by shared_subscription id. Absent key means "pending",
+  // so cards start filtered without needing to be seeded when the list loads.
+  const [viewMode, setViewMode] = useState<Record<string, "pending" | "all">>({})
 
   return (
     <div className="px-6 py-12">
@@ -47,7 +51,17 @@ export function SharedSubscriptionsPage() {
 
         {state === "ready" && items.length > 0 && (
           <div className="mt-6 space-y-4">
-            {items.map((item) => (
+            {items.map((item) => {
+              const paidCount = item.paymentRequests.filter((r) => r.status === "paid").length
+              const mode = viewMode[item.sharedSubscription.id] ?? "pending"
+              // Display filter only — the fetched list is untouched, nothing is deleted
+              // or archived, and "All" restores the full set from memory.
+              const visibleRequests =
+                mode === "pending"
+                  ? item.paymentRequests.filter((r) => r.status !== "paid")
+                  : item.paymentRequests
+
+              return (
               <section key={item.sharedSubscription.id} className="rounded-lg border border-border bg-card p-6">
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
@@ -55,11 +69,38 @@ export function SharedSubscriptionsPage() {
                     <Badge variant="outline">{SPLIT_METHOD_LABEL[item.sharedSubscription.split_method]}</Badge>
                     {!item.isOwner && <Badge variant="outline">Member</Badge>}
                   </div>
-                  {item.isOwner && (
-                    <Button type="button" variant="outline" size="sm" render={<Link to={`/subscriptions/${item.subscriptionId}`} />}>
-                      Manage
-                    </Button>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {/* Only offered once something is actually hidden: with no paid
+                        requests, both states show the same list.
+                        The visible label names the CURRENT state, so the accessible name
+                        spells out both that state and what clicking does — a lone word
+                        like "Pending" is otherwise ambiguous between the two. */}
+                    {paidCount > 0 && (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={() =>
+                          setViewMode((prev) => ({
+                            ...prev,
+                            [item.sharedSubscription.id]: mode === "pending" ? "all" : "pending",
+                          }))
+                        }
+                        aria-label={
+                          mode === "pending"
+                            ? `Showing pending only. Click to show all, including ${paidCount} paid.`
+                            : "Showing all. Click to show pending only."
+                        }
+                      >
+                        {mode === "pending" ? "Pending" : "All"}
+                      </Button>
+                    )}
+                    {item.isOwner && (
+                      <Button type="button" variant="outline" size="sm" render={<Link to={`/subscriptions/${item.subscriptionId}`} />}>
+                        Manage
+                      </Button>
+                    )}
+                  </div>
                 </div>
 
                 {item.members.length > 0 && (
@@ -83,7 +124,7 @@ export function SharedSubscriptionsPage() {
                       Payment requests
                     </h3>
                     <div className="mt-2 space-y-2">
-                      {item.paymentRequests.map((request) => (
+                      {visibleRequests.map((request) => (
                         <PaymentRequestItem
                           key={request.id}
                           request={request}
@@ -102,7 +143,8 @@ export function SharedSubscriptionsPage() {
                   </div>
                 )}
               </section>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>
