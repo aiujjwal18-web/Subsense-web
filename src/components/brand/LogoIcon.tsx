@@ -7,10 +7,11 @@ interface LogoIconProps {
 
 export function LogoIcon({ className }: LogoIconProps) {
   return (
-    <img
-      src={logoIconSrc}
-      alt=""
-      className={cn("rounded-[22.5%] object-cover", className)}
-    />
+    // No CSS corner rounding here on purpose: the source asset is a square crop
+    // of the badge's own chrome bezel, which already has its rounded corner baked
+    // in. A second, independent CSS clip on top of that caused a double-rounding
+    // mismatch (visible as messy/broken edges at small render sizes) — fixed by
+    // cropping the asset tightly to the badge and removing this clip entirely.
+    <img src={logoIconSrc} alt="" className={cn("object-contain", className)} />
   )
 }
