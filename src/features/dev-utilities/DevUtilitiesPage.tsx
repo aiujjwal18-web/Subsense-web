@@ -1,5 +1,7 @@
 import type { ReactNode } from "react"
 
+import { RazorpayTestPanel } from "./RazorpayTestPanel"
+
 // Hidden developer surface (Phase 11). Deliberately NOT in Sidebar's NAV_ITEMS —
 // reachable only by typing /dev-utilities. It still renders inside ProtectedRoute +
 // AppLayout, so it is authenticated and shares the app shell like every other route.
@@ -98,7 +100,7 @@ export function DevUtilitiesPage() {
             consequence="Moves Test Mode money"
             consequenceLevel="external"
           >
-            <NotWiredYet />
+            <RazorpayTestPanel />
           </UtilitySection>
 
           <UtilitySection
