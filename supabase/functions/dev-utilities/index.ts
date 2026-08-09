@@ -1,6 +1,10 @@
 import { createSupabaseAdminClient } from "../_shared/supabase-admin.ts"
 import { requireAuthenticatedUser } from "../_shared/require-user.ts"
 import { errorResponse, handleCorsPreflight } from "../_shared/http.ts"
+import { handleBuildPrompt } from "./build-prompt.ts"
+import { handleIntegrationStatus } from "./integration-status.ts"
+import { handleRenderEmail } from "./render-email.ts"
+import { handleTriggerReminder } from "./trigger-reminder.ts"
 
 // Phase 11 developer utilities, backing src/features/dev-utilities/DevUtilitiesPage.tsx.
 //
@@ -45,11 +49,11 @@ Deno.serve(async (req) => {
 
   const supabaseAdmin = createSupabaseAdminClient()
 
-  // Gate first, before parsing anything. The resolved userId is not destructured yet —
-  // no action in this skeleton uses it — but every handler added from Task 3 onward
-  // reads it from here rather than trusting anything in the request body.
+  // Gate first, before parsing anything. Every handler below receives this resolved
+  // userId and scopes its work to it — no handler ever trusts a user id from the body.
   const authResult = await requireAuthenticatedUser(req, supabaseAdmin)
   if (authResult instanceof Response) return authResult
+  const { userId } = authResult
 
   let requestBody: { action?: unknown } = {}
   try {
@@ -70,8 +74,19 @@ Deno.serve(async (req) => {
     )
   }
 
-  // Handlers land in Tasks 3, 4, 5 and 7. Each will be its own module in this directory
-  // rather than inlined here, so index.ts stays a readable auth-and-dispatch shell
-  // instead of growing into four concerns in one file.
-  return errorResponse(501, "DEV_003", `Action '${requestBody.action}' is not implemented yet.`)
+  // Each handler is its own module in this directory rather than inlined here, so
+  // index.ts stays a readable auth-and-dispatch shell instead of four concerns in one
+  // file. Handlers receive the resolved userId; none reads an identity from the body.
+  const params = requestBody as Record<string, unknown>
+
+  switch (requestBody.action) {
+    case "build_prompt":
+      return await handleBuildPrompt(supabaseAdmin, userId, params)
+    case "render_email":
+      return await handleRenderEmail(supabaseAdmin, userId, params)
+    case "integration_status":
+      return await handleIntegrationStatus(supabaseAdmin)
+    case "trigger_reminder":
+      return await handleTriggerReminder(supabaseAdmin, userId, params)
+  }
 })
