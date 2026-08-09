@@ -36,27 +36,30 @@ Instead: every subscription card renders a fixed, generic Lucide icon keyed to t
 
 `subscription_catalog.logo_url` (added under DEC-046) is deprecated — do not read it anywhere in new code, even though the column still exists in the schema (kept, unused, rather than dropped; see `10_Database_Architecture` for why). If you're adding a new catalog row or building a new component that shows a subscription's identity, use the category icon lookup, never `logo_url` or a freshly-fetched brand asset — the fact that fetching one would be technically easy is not a reason to reintroduce this.
 
-## Brand System: DEC-057 (current, supersedes "Ledger Dark")
+## Brand System: DEC-065 "Cyber Lime" (current, supersedes DEC-057 "amber/white", which superseded "Ledger Dark" before that)
 
-Full detail lives in `05_Design_System` (IIT Capstone docs folder — always check the current version number in `19_SubSense_Claude_Project_Instructions`, don't hardcode a version here). The essentials, so you don't have to open that doc for every small task:
+Full detail lives in `05_Design_System` (IIT Capstone docs folder — always check the current version number in `19_SubSense_Claude_Project_Instructions`, don't hardcode a version here). The essentials, so you don't have to open that doc for every small task. This table is live in `src/index.css` today, not a pending target — verify against that file if anything here looks off, don't assume this note is stale before checking.
 
 ### Colors
 
 | Token | Hex | Use |
 | --- | --- | --- |
 | Page | `#050505` | App background — deepest layer |
-| Surface (card/elevated) | `#0B0C0E` | Card, modal, icon tile — same value for both, deliberately not two shades |
-| Primary | `#FFC800` | CTAs, active highlights, key metrics, logo mark — pair with **dark text**, never white text on this fill |
-| Secondary | `#FFFFFF` | Secondary titles, headers, icons; secondary button border/text |
-| Text Primary | `#FFFFFF` | Body/heading text |
-| Text Secondary | `#A3A3A3` | Supporting text — inferred value, not yet visually confirmed live; flag if it reads wrong once built |
-| Text Muted | `#737373` | Placeholders, captions — same inferred-value caveat |
-| Border / Border Strong | `rgba(255,255,255,0.08)` / `rgba(255,255,255,0.16)` | Unchanged from before — still correct, don't touch |
+| Surface 1 | `#121212` | Card, sidebar, nav bars |
+| Surface 2 | `#1A1A1E` | Elevated surface, modal, dropdown, icon tile — distinct tier from Surface 1, reintroduced under DEC-065 |
+| Primary | `#A3E635` ("Cyber Lime") | Default/rest primary button fill, active highlights, key metrics — pair with **dark text** (`#050505`), never Text Primary on this fill |
+| Secondary Accent | `#38BDF8` ("Cool Steel Blue") | Wordmark gradient's second color, status-tag/interactive-state uses — deliberately not extended to Border Beam/GlowingEffect gradients (those recolor to Primary + Text Primary instead), keeping this blue exclusive to the wordmark |
+| Text Primary | `#F1F5F9` ("Metallic Silver") | Body/heading text |
+| Text Secondary | `#94A3B8` ("Muted Chrome") | Supporting text |
+| Text Muted | `#737373` | Placeholders, captions — unchanged since DEC-057 |
+| Accent Subtle Background | `rgba(163,230,53,0.15)` | Badge/pill background, checked-toggle track |
+| Accent Subtle Text | `#A3E635` | Text on accent subtle background |
+| Border / Border Strong | see `index.css` `--border` / `--border-strong` | Unchanged in role, values live in code |
 | Status colors (Neutral/Amber/Green/Red) | `#94A3B8` / `#F59E0B` / `#059669` / `#DC2626` | Unchanged, deliberately independent of brand color — never substitute Primary for Status Amber even though they're visually close |
 
-**Never use pure `#000` or `#fff` for a new surface** — the two values above are deliberately tinted, not pure black, per the two-tier split's own reasoning (card lifts forward, page recedes).
+**Never use pure `#000` or `#fff` for a new surface** — Page and Surface 1/2 above are deliberately tinted, not pure black.
 
-### Typography — four families, one role each
+### Typography — four families, one role each, loaded and wired
 
 | Role | Family | Weight | Use |
 | --- | --- | --- | --- |
@@ -65,21 +68,17 @@ Full detail lives in `05_Design_System` (IIT Capstone docs folder — always che
 | Primary Subhead & Action | Plus Jakarta Sans | Bold | Headers, card titles, button labels |
 | Secondary Body & UI | Inter | Regular/Medium | Body copy, descriptions, dense/numeric UI |
 
-**Setup not yet done**: none of these four fonts are loaded yet. Syne, Plus Jakarta Sans, and Inter are on Google Fonts. **Cabinet Grotesk is not** — use the Fontshare CDN or self-host it; check how IBM Plex Sans is currently loaded (`index.html` link vs. `@font-face`) and match that pattern. Do this before wiring any component to these font tokens — a component pointing at an unloaded font silently falls back to the browser default, which will look broken without an obvious error.
+All four are loaded and wired today via CSS custom properties in `index.css` (`--font-display`, `--font-display-secondary`, `--font-heading`, `--font-sans`) — unchanged since DEC-057, since DEC-065 doesn't touch fonts at all.
 
 ### Cards and buttons
 
-- **Card standard**: glass-morphism is now the default for every card (translucent Surface fill, backdrop blur, 1px Border), not just the pre-auth exception. **8px corner radius is unchanged** — the brand kit doesn't specify a radius, so don't invent a new one.
-- **Primary button**: `#FFC800` fill with **dark text** (`#050505`), per the brand kit's explicit instruction — this is a source-given value, don't second-guess it.
-- **Secondary button**: outline/transparent fill, `#FFFFFF` border and text — this one is inferred (the brand kit only defines two accent colors, not a secondary-button spec), flag if it reads wrong live.
+- **Card standard (corrected per DEC-066):** opaque Surface 1 (`bg-card`), no blur, no translucency — this is the actual majority pattern across shipped page-level card instances. `SubscriptionCard.tsx`'s individual list tile is the one deliberate exception, using a translucent `bg-card/70 backdrop-blur-md` treatment — don't generalize that exception to other card types. **8px corner radius is unchanged** — no brand kit to date has specified a radius.
+- **Primary button**: `#A3E635` fill with **dark text** (`#050505`) — never Text Primary on this fill.
+- **Secondary button**: outline/transparent fill — check `index.css`'s live `--secondary`/`--secondary-foreground` values rather than assuming a specific hex here.
 
-### Migration status — read before touching any screen
+### Pre-authentication screens (login/signup/forgot/reset password) — no exception anymore (DEC-066)
 
-`src/index.css` still has the **previous** Ledger Dark values (blue accents, single IBM Plex Sans) as of the last verified state. The table above is the target, not yet the current live state of the codebase. Check `index.css` at the start of any styling task to see what's actually landed vs. still pending — don't assume the tokens above are already wired in.
-
-### Pre-authentication screens (login/signup/forgot/reset password) — do not touch yet
-
-These three screens carry their own separate, already-shipped visual treatment (DEC-056: sparkle background, glass card, kinetic/typewriter text, custom hover button) and are **explicitly out of scope** for this brand-kit migration until their own dedicated pass runs later. Don't apply the tokens above to these screens as a side effect of touching shared components (Button, Card) that they also import — check the call site.
+These three screens used to carry their own separate visual treatment (DEC-056: sparkle particle background, glass card, kinetic/typewriter text, custom hover button). **That exception was fully retired under DEC-066** — confirmed live: the sparkle background is gone with no replacement (flat `bg-background`, same Page token as every other screen), and the `@tsparticles/*` packages it depended on are no longer in `package.json` at all. These screens now follow the same Card, Background, and Button standards as everywhere else in the app — treat them like any other screen, not a carve-out.
 
 ## Reference components — none are drop-in yet
 
@@ -113,8 +112,9 @@ If a source suggests a GSAP-based pattern, translate the underlying design inten
 ### Why
 Motion has far greater adoption in the React ecosystem (~35M weekly downloads vs. GSAP's ~3M) and its declarative, component-driven API matches this project's actual animation needs: button/card hover and press states, toast/dialog enter-exit, a capped staggered list entrance. Nothing in this project involves scroll-driven storytelling or complex timelines, which is where GSAP would actually earn its keep. Running two animation libraries in one small app adds bundle size and complexity for no benefit here.
 
-### Approved exception: @tsparticles/react, @tsparticles/engine, @tsparticles/slim
-These three are installed for the login page's `SparklesCore` particle background (`src/components/ui/sparkles.tsx`). This is **not** a second animation library — tsParticles is a canvas particle-rendering engine, not a JS animation/timeline library, and doesn't overlap with what Motion is used for. `SparklesCore` still imports `useAnimation`/`motion` from `motion/react` for its own fade-in, not from `framer-motion`. Don't re-litigate or duplicate-install this set in a future session; if a similar particle effect is needed elsewhere, reuse `SparklesCore` rather than adding another particle library. The dot-grid background candidate (see Reference Components above) needs no particle-engine dependency at all — plain Canvas API.
+### `@tsparticles/*` — removed, not an active exception (DEC-066)
+
+The login page's `SparklesCore` particle background and its three `@tsparticles/*` packages were removed entirely under DEC-066, alongside the rest of the pre-authentication screens' DEC-056 exception (see above) — confirmed not present in `package.json` and no `sparkles.tsx` file in the tree. Don't reinstall this set or reintroduce a particle background without a fresh decision recorded in doc 08 first. The dot-grid background candidate (see Reference Components above) stays dropped per DEC-058 regardless.
 
 ## Design system reference
 
