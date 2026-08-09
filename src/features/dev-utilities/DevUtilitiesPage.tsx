@@ -1,5 +1,11 @@
 import type { ReactNode } from "react"
 
+import {
+  IntegrationStatusPanel,
+  SendReminderPanel,
+  TestAiPanel,
+  TestEmailPanel,
+} from "./DevPanels"
 import { RazorpayTestPanel } from "./RazorpayTestPanel"
 
 // Hidden developer surface (Phase 11). Deliberately NOT in Sidebar's NAV_ITEMS —
@@ -50,10 +56,6 @@ function UtilitySection({
   )
 }
 
-function NotWiredYet() {
-  return <p className="text-sm text-muted-foreground">Not wired up yet.</p>
-}
-
 export function DevUtilitiesPage() {
   return (
     <div className="px-6 py-12">
@@ -73,7 +75,7 @@ export function DevUtilitiesPage() {
             consequence="Sends real email"
             consequenceLevel="external"
           >
-            <NotWiredYet />
+            <SendReminderPanel />
           </UtilitySection>
 
           <UtilitySection
@@ -82,7 +84,7 @@ export function DevUtilitiesPage() {
             consequence="Free in dry run"
             consequenceLevel="inert"
           >
-            <NotWiredYet />
+            <TestAiPanel />
           </UtilitySection>
 
           <UtilitySection
@@ -91,7 +93,7 @@ export function DevUtilitiesPage() {
             consequence="No side effects"
             consequenceLevel="inert"
           >
-            <NotWiredYet />
+            <TestEmailPanel />
           </UtilitySection>
 
           <UtilitySection
@@ -109,7 +111,7 @@ export function DevUtilitiesPage() {
             consequence="Read-only"
             consequenceLevel="inert"
           >
-            <NotWiredYet />
+            <IntegrationStatusPanel />
           </UtilitySection>
         </div>
       </div>
